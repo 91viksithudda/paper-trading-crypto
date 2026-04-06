@@ -105,3 +105,6 @@ const startServer = async () => {
 };
 
 startServer();
+
+// Export the Express API for Vercel
+module.exports = app;
