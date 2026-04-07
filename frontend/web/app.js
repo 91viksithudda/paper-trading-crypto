@@ -34,7 +34,10 @@ document.getElementById('login-form').addEventListener('submit', async(e)=>{
     localStorage.setItem('ag_token',token);
     localStorage.setItem('ag_user',JSON.stringify(currentUser));
     enterApp();
-  } catch(err) { showAuthError('Cannot connect to server. Make sure the backend is running.'); }
+  } catch(err) { 
+    console.error('Login error:', err);
+    showAuthError('Cannot connect to API. Error: ' + err.message); 
+  }
 });
 
 document.getElementById('signup-form').addEventListener('submit', async(e)=>{
@@ -50,7 +53,10 @@ document.getElementById('signup-form').addEventListener('submit', async(e)=>{
     localStorage.setItem('ag_token',token);
     localStorage.setItem('ag_user',JSON.stringify(currentUser));
     enterApp();
-  } catch(err) { showAuthError('Cannot connect to server.'); }
+  } catch(err) { 
+    console.error('Signup error:', err);
+    showAuthError('Cannot connect to API. Error: ' + err.message); 
+  }
 });
 
 function logout() {

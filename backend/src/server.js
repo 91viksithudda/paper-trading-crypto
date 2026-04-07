@@ -72,8 +72,12 @@ const startServer = async () => {
   const hasRealMongo = mongoUri && !mongoUri.includes('<username>') && !mongoUri.includes('<password>');
 
   if (hasRealMongo) {
+    console.log('📡 Attempting MongoDB connection...');
     try {
-      await mongoose.connect(mongoUri);
+      // Set options for serverless
+      await mongoose.connect(mongoUri, {
+        serverSelectionTimeoutMS: 5000, // Faster timeout for serverless
+      });
       console.log('✅ MongoDB connected');
     } catch (err) {
       console.warn('⚠️  MongoDB failed, switching to in-memory mode:', err.message);
@@ -81,7 +85,7 @@ const startServer = async () => {
       app.locals.usingMemory = true;
     }
   } else {
-    console.log('⚡ Running in IN-MEMORY mode (no MongoDB configured). Data resets on restart.');
+    console.log('⚡ Running in IN-MEMORY mode.');
     usingMemory = true;
     app.locals.usingMemory = true;
   }
@@ -89,22 +93,32 @@ const startServer = async () => {
   // Set memory mode on routes
   process.env.USE_MEMORY = usingMemory ? 'true' : 'false';
 
-  // Load initial price cache
-  await updatePriceCache();
-
-  // Update every 15 seconds
-  cron.schedule('*/15 * * * * *', async () => {
+  // Update prices
+  try {
     await updatePriceCache();
-  });
+  } catch (err) {
+    console.error('Price cache update failed:', err.message);
+  }
 
-  app.listen(PORT, () => {
-    console.log(`🚀 Antigravity Crypto API running on port ${PORT}`);
-    console.log(`📡 Mode: ${usingMemory ? 'IN-MEMORY' : 'MONGODB'}`);
-    console.log(`🌐 Frontend: http://localhost:${PORT}`);
-  });
+  // Only start cron and listen if NOT on Vercel
+  if (!process.env.VERCEL) {
+    // Update every 15 seconds
+    cron.schedule('*/15 * * * * *', async () => {
+      await updatePriceCache();
+    });
+
+    app.listen(PORT, () => {
+      console.log(`🚀 Antigravity Crypto API running on port ${PORT}`);
+      console.log(`📡 Mode: ${usingMemory ? 'IN-MEMORY' : 'MONGODB'}`);
+      console.log(`🌐 Frontend: http://localhost:${PORT}`);
+    });
+  } else {
+    console.log('☁️  Running in Vercel Serverless environment');
+  }
 };
 
-startServer();
+// Global initialization start
+startServer().catch(err => console.error('Startup Error:', err));
 
 // Export the Express API for Vercel
 module.exports = app;
