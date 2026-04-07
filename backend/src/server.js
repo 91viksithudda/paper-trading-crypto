@@ -1,15 +1,16 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
 const mongoose = require('mongoose');
-const cron = require('node-cron');
 
 const app = express();
 
 // Security middleware - Only on local
 if (!process.env.VERCEL) {
+  const helmet = require('helmet');
+  const rateLimit = require('express-rate-limit');
+  const path = require('path');
+  
   app.use(helmet({ contentSecurityPolicy: false }));
   app.use(cors());
   
@@ -20,7 +21,6 @@ if (!process.env.VERCEL) {
   app.use('/api/', limiter);
   
   // Serve static locally
-  const path = require('path');
   app.use(express.static(path.join(__dirname, '../../frontend/web')));
 } else {
   // CORS for Vercel
@@ -119,6 +119,7 @@ app.use(async (req, res, next) => {
 
 // For local development
 if (!process.env.VERCEL) {
+  const cron = require('node-cron');
   const startLocal = async () => {
     await connectDB();
     await updatePriceCache().catch(() => {});
