@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Paper Trading — Crypto Paper Trader</title>
+  <meta name="description" content="Practice crypto trading risk-free with real-time Binance market data. Start with $10,000 virtual cash.">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
+  <script src="https://s3.tradingview.com/tv.js"></script>
+</head>
+<body>
+
+<!-- ==================== AUTH ==================== -->
+<div id="auth-screen" class="auth-container">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <h1>🚀 Paper Trading</h1>
+      <p>Crypto Paper Trader</p>
+    </div>
+    <div id="auth-error" class="auth-error"></div>
+
+    <!-- Login Form -->
+    <form id="login-form">
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="login-email" placeholder="you@example.com" required>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="login-password" placeholder="••••••••" required>
+      </div>
+      <button type="submit" class="btn btn-primary" id="login-btn">Sign In</button>
+      <div class="auth-switch">
+        Don't have an account? <a onclick="showSignup()">Create one</a>
+      </div>
+    </form>
+
+    <!-- Signup Form -->
+    <form id="signup-form" style="display:none">
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" id="signup-username" placeholder="trader123" required minlength="3" maxlength="20">
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="signup-email" placeholder="you@example.com" required>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="signup-password" placeholder="Min 6 characters" required minlength="6">
+      </div>
+      <button type="submit" class="btn btn-primary" id="signup-btn">Create Account</button>
+      <div class="auth-switch">
+        Already have an account? <a onclick="showLogin()">Sign in</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ==================== MAIN APP ==================== -->
+<div id="app" class="app-container">
+  <!-- Top Bar -->
+  <div class="top-bar">
+    <div class="top-bar-logo">🚀 Paper Trading</div>
+    <div class="top-bar-user">
+      <div class="top-bar-balance" id="top-balance">$10,000.00</div>
+      <div class="top-bar-avatar" id="top-avatar">T</div>
+      <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+  </div>
+
+  <!-- Navigation -->
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="switchPage('market')" id="nav-market">📊 Market</button>
+    <button class="nav-tab" onclick="switchPage('portfolio')" id="nav-portfolio">💼 Portfolio</button>
+    <button class="nav-tab" onclick="switchPage('trades')" id="nav-trades">📋 Trades</button>
+    <button class="nav-tab" onclick="switchPage('leaderboard')" id="nav-leaderboard">🏆 Leaderboard</button>
+    <button class="nav-tab" onclick="switchPage('ai')" id="nav-ai">🤖 AI Signals</button>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+
+    <!-- ===== MARKET PAGE ===== -->
+    <div id="page-market" class="page active">
+      <div class="stats-grid" id="market-stats"></div>
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Live Market</h2>
+          <span class="badge" id="last-update">Live</span>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="market-table">
+            <thead>
+              <tr>
+                <th>Coin</th>
+                <th>Price</th>
+                <th>24h Change</th>
+                <th>24h High</th>
+                <th>24h Low</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="market-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== PORTFOLIO PAGE ===== -->
+    <div id="page-portfolio" class="page">
+      <div class="stats-grid" id="portfolio-stats"></div>
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Your Holdings</h2>
+        </div>
+        <div id="holdings-list" class="holdings-list"></div>
+      </div>
+    </div>
+
+    <!-- ===== TRADES PAGE ===== -->
+    <div id="page-trades" class="page">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Trade History</h2>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="market-table">
+            <thead>
+              <tr><th>Date</th><th>Type</th><th>Coin</th><th>Qty</th><th>Price</th><th>Total</th><th>P&L</th></tr>
+            </thead>
+            <tbody id="trades-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== LEADERBOARD PAGE ===== -->
+    <div id="page-leaderboard" class="page">
+      <h2 class="section-title">🏆 Leaderboard</h2>
+      <div id="leaderboard-list"></div>
+    </div>
+
+    <!-- ===== AI SIGNALS PAGE ===== -->
+    <div id="page-ai" class="page">
+      <h2 class="section-title">🤖 AI Trading Signals <span class="badge">Beta</span></h2>
+      <div id="suggestions-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== TRADE MODAL ==================== -->
+<div id="trade-modal" class="modal-overlay">
+  <div class="modal large-modal">
+    <div class="modal-header">
+      <div class="modal-title" style="margin-bottom:0;">
+        <span id="modal-coin-name">Trade</span>
+        <span id="modal-live-price" class="live-price-badge">$0.00</span>
+      </div>
+      <button class="modal-close" onclick="closeTradeModal()">&times;</button>
+    </div>
+    <div class="trading-layout">
+      <!-- Left side: Chart -->
+      <div class="trading-chart-container">
+        <div id="tv-chart" style="width:100%; height:380px;"></div>
+      </div>
+      <!-- Middle: Order Book -->
+      <div class="trading-orderbook">
+        <div class="ob-header">Order Book</div>
+        <div class="ob-cols">
+          <div class="ob-col" id="ob-bids"></div>
+          <div class="ob-col" id="ob-asks"></div>
+        </div>
+      </div>
+      <!-- Right: Execution -->
+      <div class="trading-execution">
+        <div class="trade-type-toggle">
+          <button class="trade-type-btn buy active" id="toggle-buy" onclick="setTradeType('BUY')">Buy</button>
+          <button class="trade-type-btn sell" id="toggle-sell" onclick="setTradeType('SELL')">Sell</button>
+        </div>
+        <div class="trade-info">
+          <span class="trade-info-label">Available Balance</span>
+          <span class="trade-info-value" id="modal-balance">$0.00</span>
+        </div>
+        <div class="form-group" style="margin-top:20px">
+          <label>Amount in USD</label>
+          <input type="number" id="trade-amount" placeholder="e.g. 500" min="1" step="any">
+        </div>
+        <div class="trade-info">
+          <span class="trade-info-label">You'll receive (est.)</span>
+          <span class="trade-info-value" id="modal-estimate">0.000</span>
+        </div>
+        <div class="trade-actions" style="margin-top:auto;">
+          <button class="btn btn-buy" id="execute-trade-btn" style="width:100%" onclick="executeTrade()">Confirm Buy</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Daily Reward Button -->
+<button class="daily-reward-btn" onclick="claimDailyReward()" title="Claim Daily Reward">🎁</button>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toast-container"></div>
+
+<script src="app.js?v=4"></script>
+</body>
+</html>
