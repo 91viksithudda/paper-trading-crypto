@@ -1,4 +1,4 @@
-const API = 'http://localhost:5000/api';
+const API = '/api';
 let token = localStorage.getItem('ag_token');
 let currentUser = JSON.parse(localStorage.getItem('ag_user') || 'null');
 let marketData = [];
