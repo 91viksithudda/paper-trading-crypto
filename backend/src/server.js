@@ -68,7 +68,6 @@ const PORT = process.env.PORT || 5000;
 
 /**
  * Serverless initialization for MongoDB
- * On Vercel, we attempt to connect once per cold start, but don't block exports.
  */
 let isDBConnected = false;
 const connectDB = async () => {
@@ -77,6 +76,7 @@ const connectDB = async () => {
   if (!mongoUri || mongoUri.includes('<username>')) return;
   
   try {
+    // Faster timeout for serverless
     await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 5000 });
     isDBConnected = true;
     console.log('✅ MongoDB connected');
@@ -85,33 +85,38 @@ const connectDB = async () => {
   }
 };
 
-// Middleware to ensure DB is connected for every request
+// Middleware to ensure DB and Cache are ready
+let isAppInitialized = false;
 app.use(async (req, res, next) => {
+  if (!isAppInitialized) {
+    const mongoUri = process.env.MONGODB_URI;
+    process.env.USE_MEMORY = (mongoUri && !mongoUri.includes('<username>')) ? 'false' : 'true';
+    
+    // Attempt DB and Price connection but don't block too long
+    Promise.all([
+      connectDB(),
+      updatePriceCache().catch(e => console.error('Price update failed', e.message))
+    ]);
+    
+    isAppInitialized = true;
+  }
+  
+  // Always try to connect if not connected
   if (process.env.VERCEL && !isDBConnected) {
-    await connectDB();
+    await connectDB().catch(() => {}); 
   }
   next();
 });
 
-const initApp = async () => {
-  // Set memory mode
-  const mongoUri = process.env.MONGODB_URI;
-  const hasRealMongo = mongoUri && !mongoUri.includes('<username>');
-  process.env.USE_MEMORY = hasRealMongo ? 'false' : 'true';
-
-  // Seed prices if needed
-  try {
-    await updatePriceCache();
-  } catch(e) {}
-
-  // Local only
-  if (!process.env.VERCEL) {
+// For local development
+if (!process.env.VERCEL) {
+  const startLocal = async () => {
     await connectDB();
+    await updatePriceCache().catch(() => {});
     cron.schedule('*/15 * * * * *', updatePriceCache);
     app.listen(PORT, () => console.log(`🚀 API running on http://localhost:${PORT}`));
-  }
-};
-
-initApp();
+  };
+  startLocal();
+}
 
 module.exports = app;
