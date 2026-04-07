@@ -8,25 +8,26 @@ const cron = require('node-cron');
 
 const app = express();
 
-// Security middleware
-app.use(helmet({ contentSecurityPolicy: false }));
-app.use(cors({
-  origin: '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
+// Security middleware - Only on local
+if (!process.env.VERCEL) {
+  app.use(helmet({ contentSecurityPolicy: false }));
+  app.use(cors());
+  
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 1000,
+  });
+  app.use('/api/', limiter);
+  
+  // Serve static locally
+  const path = require('path');
+  app.use(express.static(path.join(__dirname, '../../frontend/web')));
+} else {
+  // CORS for Vercel
+  app.use(cors());
+}
 
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 1000,
-  message: { error: 'Too many requests, please try again later.' },
-});
-app.use('/api/', limiter);
-app.use(express.json({ limit: '10kb' }));
-
-// Serve static frontend
-const path = require('path');
-app.use(express.static(path.join(__dirname, '../../frontend/web')));
+app.use(express.json());
 
 // Let the app know if we're in in-memory mode
 let usingMemory = false;
@@ -46,14 +47,22 @@ app.use('/api/trade', tradeRoutes);
 app.use('/api/portfolio', portfolioRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
 
-app.get('/health', (req, res) => {
-  res.json({ status: 'OK', mode: usingMemory ? 'in-memory' : 'mongodb', timestamp: new Date().toISOString() });
+app.get('/health', async (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    mode: process.env.USE_MEMORY === 'true' ? 'in-memory' : 'mongodb',
+    vercel: !!process.env.VERCEL,
+    timestamp: new Date().toISOString() 
+  });
 });
 
-// Serve frontend for all other routes
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../../frontend/web/index.html'));
-});
+// Local only fallback
+if (!process.env.VERCEL) {
+  const path = require('path');
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../../frontend/web/index.html'));
+  });
+}
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
