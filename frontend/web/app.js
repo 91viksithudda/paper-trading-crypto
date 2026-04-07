@@ -28,7 +28,10 @@ document.getElementById('login-form').addEventListener('submit', async(e)=>{
   const password=document.getElementById('login-password').value;
   try {
     const r=await fetch(`${API}/auth/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})});
-    const d=await r.json();
+    const text=await r.text();
+    let d;
+    try { d=JSON.parse(text); } catch(e) { d={error: 'Server returned non-JSON: ' + text.slice(0,100)}; }
+    
     if(!r.ok) return showAuthError(d.error||'Login failed');
     token=d.token; currentUser=d.user;
     localStorage.setItem('ag_token',token);
@@ -36,7 +39,7 @@ document.getElementById('login-form').addEventListener('submit', async(e)=>{
     enterApp();
   } catch(err) { 
     console.error('Login error:', err);
-    showAuthError('Cannot connect to API. Error: ' + err.message); 
+    showAuthError('Connection error: ' + err.message); 
   }
 });
 
@@ -47,7 +50,10 @@ document.getElementById('signup-form').addEventListener('submit', async(e)=>{
   const password=document.getElementById('signup-password').value;
   try {
     const r=await fetch(`${API}/auth/signup`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,email,password})});
-    const d=await r.json();
+    const text=await r.text();
+    let d;
+    try { d=JSON.parse(text); } catch(e) { d={error: 'Server returned non-JSON: ' + text.slice(0,100)}; }
+    
     if(!r.ok) return showAuthError(d.error||'Signup failed');
     token=d.token; currentUser=d.user;
     localStorage.setItem('ag_token',token);
@@ -55,7 +61,7 @@ document.getElementById('signup-form').addEventListener('submit', async(e)=>{
     enterApp();
   } catch(err) { 
     console.error('Signup error:', err);
-    showAuthError('Cannot connect to API. Error: ' + err.message); 
+    showAuthError('Connection error: ' + err.message); 
   }
 });
 

@@ -66,59 +66,52 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 
-const startServer = async () => {
-  // Try MongoDB first, fall back to in-memory
+/**
+ * Serverless initialization for MongoDB
+ * On Vercel, we attempt to connect once per cold start, but don't block exports.
+ */
+let isDBConnected = false;
+const connectDB = async () => {
+  if (isDBConnected || mongoose.connection.readyState >= 1) return;
   const mongoUri = process.env.MONGODB_URI;
-  const hasRealMongo = mongoUri && !mongoUri.includes('<username>') && !mongoUri.includes('<password>');
-
-  if (hasRealMongo) {
-    console.log('📡 Attempting MongoDB connection...');
-    try {
-      // Set options for serverless
-      await mongoose.connect(mongoUri, {
-        serverSelectionTimeoutMS: 5000, // Faster timeout for serverless
-      });
-      console.log('✅ MongoDB connected');
-    } catch (err) {
-      console.warn('⚠️  MongoDB failed, switching to in-memory mode:', err.message);
-      usingMemory = true;
-      app.locals.usingMemory = true;
-    }
-  } else {
-    console.log('⚡ Running in IN-MEMORY mode.');
-    usingMemory = true;
-    app.locals.usingMemory = true;
-  }
-
-  // Set memory mode on routes
-  process.env.USE_MEMORY = usingMemory ? 'true' : 'false';
-
-  // Update prices
+  if (!mongoUri || mongoUri.includes('<username>')) return;
+  
   try {
-    await updatePriceCache();
+    await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 5000 });
+    isDBConnected = true;
+    console.log('✅ MongoDB connected');
   } catch (err) {
-    console.error('Price cache update failed:', err.message);
-  }
-
-  // Only start cron and listen if NOT on Vercel
-  if (!process.env.VERCEL) {
-    // Update every 15 seconds
-    cron.schedule('*/15 * * * * *', async () => {
-      await updatePriceCache();
-    });
-
-    app.listen(PORT, () => {
-      console.log(`🚀 Antigravity Crypto API running on port ${PORT}`);
-      console.log(`📡 Mode: ${usingMemory ? 'IN-MEMORY' : 'MONGODB'}`);
-      console.log(`🌐 Frontend: http://localhost:${PORT}`);
-    });
-  } else {
-    console.log('☁️  Running in Vercel Serverless environment');
+    console.error('❌ MongoDB Connection Error:', err.message);
   }
 };
 
-// Global initialization start
-startServer().catch(err => console.error('Startup Error:', err));
+// Middleware to ensure DB is connected for every request
+app.use(async (req, res, next) => {
+  if (process.env.VERCEL && !isDBConnected) {
+    await connectDB();
+  }
+  next();
+});
 
-// Export the Express API for Vercel
+const initApp = async () => {
+  // Set memory mode
+  const mongoUri = process.env.MONGODB_URI;
+  const hasRealMongo = mongoUri && !mongoUri.includes('<username>');
+  process.env.USE_MEMORY = hasRealMongo ? 'false' : 'true';
+
+  // Seed prices if needed
+  try {
+    await updatePriceCache();
+  } catch(e) {}
+
+  // Local only
+  if (!process.env.VERCEL) {
+    await connectDB();
+    cron.schedule('*/15 * * * * *', updatePriceCache);
+    app.listen(PORT, () => console.log(`🚀 API running on http://localhost:${PORT}`));
+  }
+};
+
+initApp();
+
 module.exports = app;
