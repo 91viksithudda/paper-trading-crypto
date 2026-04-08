@@ -156,8 +156,8 @@ function renderMarket() {
       <td class="price-cell" style="color:var(--text-secondary)">${fmt(c.high24h)}</td>
       <td class="price-cell" style="color:var(--text-secondary)">${fmt(c.low24h)}</td>
       <td>
-        <button class="trade-btn-sm buy" onclick="event.stopPropagation();openTradeModal('${c.coin}','${c.symbol}',${c.price},'BUY')">Buy</button>
-        <button class="trade-btn-sm sell" onclick="event.stopPropagation();openTradeModal('${c.coin}','${c.symbol}',${c.price},'SELL')">Sell</button>
+        <button class="trade-btn-sm buy" onclick="event.stopPropagation();openTradeModal('${c.coin}','${c.symbol}',${c.price},'LONG')">Buy</button>
+        <button class="trade-btn-sm sell" onclick="event.stopPropagation();openTradeModal('${c.coin}','${c.symbol}',${c.price},'SHORT')">Sell</button>
       </td>
     </tr>`;
   }).join('');
@@ -168,11 +168,10 @@ let tvChartObj = null;
 let tradeInterval = null;
 
 function openTradeModal(coin,symbol,price,type) {
-  tradeState={type:type||'BUY',coin,symbol,price};
+  tradeState={type:type||'LONG',coin,symbol,price};
   document.getElementById('modal-coin-name').textContent='Trade '+coin;
   document.getElementById('modal-live-price').textContent=fmt(price);
   document.getElementById('trade-amount').value='';
-  document.getElementById('modal-estimate').textContent='0.000';
   setTradeType(tradeState.type);
   updateModalBalance();
   document.getElementById('trade-modal').classList.add('active');
@@ -239,9 +238,7 @@ async function fetchLivePriceAndOrderBook(symbol) {
       const newPrice = parseFloat(priceData.price);
       tradeState.price = newPrice;
       document.getElementById('modal-live-price').textContent = fmt(newPrice);
-      
-      const amt = document.getElementById('trade-amount').value;
-      if(amt) document.getElementById('modal-estimate').textContent = fmtQty(parseFloat(amt)/newPrice) + ' ' + tradeState.coin;
+      calcTradeData();
     }
     if(obRes.ok) {
       const obData = await obRes.json();
@@ -262,23 +259,11 @@ function renderOrderBook(bids, asks) {
   document.getElementById('ob-asks').innerHTML = renderRows(asks, 'ask');
 }
 
-function setTradeType(type) {
-  tradeState.type=type;
-  const buyBtn=document.getElementById('toggle-buy');
-  const sellBtn=document.getElementById('toggle-sell');
-  const execBtn=document.getElementById('execute-trade-btn');
-  buyBtn.classList.toggle('active',type==='BUY');
-  sellBtn.classList.toggle('active',type==='SELL');
-  execBtn.className=type==='BUY'?'btn btn-buy':'btn btn-sell';
-  execBtn.textContent=type==='BUY'?'Confirm Buy':'Confirm Sell';
-  updateModalBalance();
-}
-
-let currentLeverage = 1;
-
 function updateModalBalance() {
   if(currentUser) document.getElementById('modal-balance').textContent=fmt(currentUser.cashBalance);
 }
+
+let currentLeverage = 1;
 
 function setTradeType(type) {
   tradeState.type = type;
