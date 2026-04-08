@@ -422,5 +422,17 @@ async function claimDailyReward() {
   } catch(err) { toast('Cannot claim reward','error'); }
 }
 
+// ==================== FULLSCREEN ====================
+function toggleFullScreen() {
+  const elem = document.querySelector('.trading-chart-container');
+  if (!document.fullscreenElement) {
+    elem.requestFullscreen().catch(err => {
+      console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+    });
+  } else {
+    document.exitFullscreen();
+  }
+}
+
 // ==================== INIT ====================
 if(token && currentUser) { enterApp(); }

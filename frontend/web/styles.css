@@ -618,3 +618,28 @@ body::before {
 .ob-row.bid .ob-bar { background: var(--green); }
 .ob-row.ask .ob-bar { background: var(--red); }
 .trading-execution { display: flex; flex-direction: column; background: var(--bg-card); padding: 20px; border-radius: var(--radius-sm); border: 1px solid var(--border); height: 380px; }
+
+/* Chart Controls */
+.trading-chart-container { position: relative; }
+.chart-controls {
+  position: absolute; top: 10px; left: 10px; z-index: 10;
+  display: flex; gap: 8px;
+}
+.btn-icon {
+  background: rgba(26,31,54,.8); border: 1px solid var(--border);
+  color: #fff; width: 32px; height: 32px; border-radius: 6px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: var(--transition); backdrop-filter: blur(4px);
+}
+.btn-icon:hover { border-color: var(--accent); background: var(--accent); }
+
+/* Fullscreen support */
+.trading-chart-container:fullscreen {
+  background: var(--bg-primary); padding: 10px;
+  width: 100vw; height: 100vh; display: flex; flex-direction: column;
+}
+
+.trading-chart-container:fullscreen #tv-chart {
+  flex: 1; height: 100% !important;
+}
+
