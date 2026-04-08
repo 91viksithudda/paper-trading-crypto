@@ -179,24 +179,66 @@
       <!-- Right: Execution -->
       <div class="trading-execution">
         <div class="trade-type-toggle">
-          <button class="trade-type-btn buy active" id="toggle-buy" onclick="setTradeType('BUY')">Buy</button>
-          <button class="trade-type-btn sell" id="toggle-sell" onclick="setTradeType('SELL')">Sell</button>
+      <button id="type-long" class="trade-type-btn active buy" onclick="setTradeType('LONG')">LONG</button>
+      <button id="type-short" class="trade-type-btn sell" onclick="setTradeType('SHORT')">SHORT</button>
+    </div>
+
+    <div class="leverage-section">
+      <div class="label-row">
+        <span>Leverage</span>
+        <span id="leverage-val" class="accent-text">1x</span>
+      </div>
+      <input type="range" id="leverage-slider" min="1" max="100" value="1" step="1" oninput="updateLeverage(this.value)">
+      <div class="leverage-marks">
+        <span>1x</span><span>25x</span><span>50x</span><span>75x</span><span>100x</span>
+      </div>
+    </div>
+
+    <div class="form-group margin-top">
+      <label>Amount in USD</label>
+      <input type="number" id="trade-amount" placeholder="e.g. 500" oninput="calcTradeData()">
+    </div>
+
+    <div class="bracket-toggle-row" onclick="toggleBracketOptions()">
+      <span class="bracket-label">Bracket Orders (SL/TP)</span>
+      <span id="bracket-arrow">▼</span>
+    </div>
+
+    <div id="bracket-options" class="hidden-options">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Take Profit (Price)</label>
+          <input type="number" id="tp-price" placeholder="Target">
         </div>
-        <div class="trade-info">
-          <span class="trade-info-label">Available Balance</span>
-          <span class="trade-info-value" id="modal-balance">$0.00</span>
+        <div class="form-group">
+          <label>Stop Loss (Price)</label>
+          <input type="number" id="sl-price" placeholder="Stop">
         </div>
-        <div class="form-group" style="margin-top:20px">
-          <label>Amount in USD</label>
-          <input type="number" id="trade-amount" placeholder="e.g. 500" min="1" step="any">
-        </div>
-        <div class="trade-info">
-          <span class="trade-info-label">You'll receive (est.)</span>
-          <span class="trade-info-value" id="modal-estimate">0.000</span>
-        </div>
-        <div class="trade-actions" style="margin-top:auto;">
-          <button class="btn btn-buy" id="execute-trade-btn" style="width:100%" onclick="executeTrade()">Confirm Buy</button>
-        </div>
+      </div>
+    </div>
+
+    <div class="trade-details">
+      <div class="trade-info">
+        <span class="trade-info-label">Available Balance</span>
+        <span class="trade-info-value" id="modal-balance">$0.00</span>
+      </div>
+      <div class="trade-info">
+        <span class="trade-info-label">You'll receive (est.)</span>
+        <span class="trade-info-value" id="modal-qty">0.000</span>
+      </div>
+      <div class="trade-info">
+        <span class="trade-info-label">Margin Required</span>
+        <span class="trade-info-value accent-text" id="modal-margin">$0.00</span>
+      </div>
+      <div class="trade-info highlight">
+        <span class="trade-info-label">Est. Liquidation</span>
+        <span class="trade-info-value negative" id="modal-liq">--</span>
+      </div>
+    </div>
+
+    <div class="trade-actions" id="modal-actions">
+      <button class="btn btn-buy" onclick="executeTrade()">Confirm Order</button>
+    </div>
       </div>
     </div>
   </div>

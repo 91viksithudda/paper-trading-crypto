@@ -617,7 +617,29 @@ body::before {
 .ob-bar { position: absolute; right: 0; top: 0; height: 100%; border-radius: 2px; opacity: 0.15; pointer-events: none; }
 .ob-row.bid .ob-bar { background: var(--green); }
 .ob-row.ask .ob-bar { background: var(--red); }
-.trading-execution { display: flex; flex-direction: column; background: var(--bg-card); padding: 20px; border-radius: var(--radius-sm); border: 1px solid var(--border); height: 380px; }
+.trading-execution { display: flex; flex-direction: column; background: var(--bg-card); padding: 20px; border-radius: var(--radius-sm); border: 1px solid var(--border); height: 380px; overflow-y: auto; }
+
+.leverage-section { margin-bottom: 20px; }
+.label-row { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+#leverage- slider { width: 100%; height: 6px; -webkit-appearance: none; background: var(--bg-input); border-radius: 3px; outline: none; }
+#leverage-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; background: var(--accent); border-radius: 50%; cursor: pointer; box-shadow: 0 0 10px var(--accent-glow); }
+.leverage-marks { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-muted); margin-top: 6px; }
+
+.margin-top { margin-top: 16px; }
+.bracket-toggle-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; cursor: pointer; border-top: 1px solid var(--border); margin-top: 16px; transition: var(--transition); }
+.bracket-toggle-row:hover .bracket-label { color: var(--accent-light); }
+.bracket-label { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+.hidden-options { display: none; padding-top: 10px; animation: fadeIn .3s ease; }
+.hidden-options.active { display: block; }
+
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.trade-details { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+.trade-info { display: flex; justify-content: space-between; font-size: 13px; border-bottom: 1px dashed var(--border); padding-bottom: 6px; }
+.trade-info.highlight { border: none; background: rgba(239, 68, 68, 0.05); padding: 8px; border-radius: 6px; }
+.accent-text { color: var(--accent-light); font-weight: 700; }
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
 
 /* Chart Controls */
 .trading-chart-container { position: relative; }

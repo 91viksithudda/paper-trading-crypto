@@ -34,6 +34,7 @@ app.locals.usingMemory = false;
 
 // Import routes
 const { updatePriceCache } = require('./services/binanceService');
+const { checkAutomatedOrders } = require('./services/orderAutomationService');
 const authRoutes = require('./routes/auth');
 const marketRoutes = require('./routes/market');
 const tradeRoutes = require('./routes/trade');
@@ -133,7 +134,10 @@ if (!process.env.VERCEL) {
   const startLocal = async () => {
     await connectDB();
     await updatePriceCache().catch(() => {});
-    cron.schedule('*/15 * * * * *', updatePriceCache);
+    cron.schedule('*/15 * * * * *', async () => {
+      await updatePriceCache();
+      await checkAutomatedOrders();
+    });
     app.listen(PORT, () => console.log(`🚀 API running on http://localhost:${PORT}`));
   };
   startLocal();

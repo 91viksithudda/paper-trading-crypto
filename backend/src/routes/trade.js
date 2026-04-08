@@ -16,11 +16,14 @@ const getMongoModels = () => {
 router.post('/execute', protect, async (req, res) => {
   try {
     const schema = Joi.object({
-      type: Joi.string().valid('BUY', 'SELL').required(),
+      type: Joi.string().valid('BUY', 'SELL', 'LONG', 'SHORT').required(),
       symbol: Joi.string().required(),
       coin: Joi.string().required(),
       quantityInUSD: Joi.number().positive().max(1000000).optional(),
       quantityInCoin: Joi.number().positive().optional(),
+      leverage: Joi.number().min(1).max(100).default(1),
+      stopLoss: Joi.number().positive().allow(null).optional(),
+      takeProfit: Joi.number().positive().allow(null).optional(),
     }).or('quantityInUSD', 'quantityInCoin');
 
     const { error, value } = schema.validate(req.body);
@@ -29,44 +32,66 @@ router.post('/execute', protect, async (req, res) => {
     const currentPrice = getPrice(value.symbol.toUpperCase());
     if (!currentPrice) return res.status(400).json({ error: 'Price not available for this symbol' });
 
-    let quantity, totalValue;
+    let quantity, totalValue, costBasis;
     if (value.quantityInUSD) {
-      quantity = value.quantityInUSD / currentPrice;
       totalValue = value.quantityInUSD;
+      quantity = totalValue / currentPrice;
     } else {
       quantity = value.quantityInCoin;
       totalValue = quantity * currentPrice;
     }
+    
+    // Cost basis is total value divided by leverage
+    costBasis = totalValue / value.leverage;
 
+    // Handle LOCAL/IN-MEMORY Mode
     if (process.env.USE_MEMORY === 'true') {
       const userId = req.user._id || req.user.id;
       const user = store.findUserById(userId);
       let profitLoss = 0;
 
-      if (value.type === 'BUY') {
-        if (user.cashBalance < totalValue) {
-          return res.status(400).json({ error: 'Insufficient balance', available: user.cashBalance, required: totalValue });
+      if (value.type === 'BUY' || value.type === 'LONG' || value.type === 'SHORT') {
+        if (user.cashBalance < costBasis) {
+          return res.status(400).json({ error: 'Insufficient balance', available: user.cashBalance, required: costBasis });
         }
-        user.cashBalance -= totalValue;
-        const existing = user.portfolio.find(p => p.coin === value.coin);
-        if (existing) {
-          const totalQty = existing.quantity + quantity;
-          existing.avgBuyPrice = (existing.avgBuyPrice * existing.quantity + currentPrice * quantity) / totalQty;
-          existing.quantity = totalQty;
-        } else {
-          user.portfolio.push({ coin: value.coin, symbol: value.symbol.toUpperCase(), quantity, avgBuyPrice: currentPrice });
+        user.cashBalance -= costBasis;
+        
+        // Calculate liquidation price
+        let liqPrice = null;
+        if (value.leverage > 1) {
+          liqPrice = value.type === 'SHORT' 
+            ? currentPrice * (1 + 0.9 / value.leverage)
+            : currentPrice * (1 - 0.9 / value.leverage);
         }
+
+        user.portfolio.push({ 
+          coin: value.coin, 
+          symbol: value.symbol.toUpperCase(), 
+          quantity, 
+          avgBuyPrice: currentPrice,
+          leverage: value.leverage,
+          stopLoss: value.stopLoss,
+          takeProfit: value.takeProfit,
+          liquidationPrice: liqPrice,
+          type: value.type === 'SHORT' ? 'SHORT' : 'LONG',
+          collateral: costBasis
+        });
       } else {
-        const holding = user.portfolio.find(p => p.coin === value.coin);
-        if (!holding || holding.quantity < quantity) {
-          return res.status(400).json({ error: 'Insufficient coin balance', available: holding ? holding.quantity : 0, required: quantity });
+        // Simple SELL (Closing a position)
+        const holdingIndex = user.portfolio.findIndex(p => p.coin === value.coin);
+        if (holdingIndex === -1) return res.status(400).json({ error: 'No position found for this coin' });
+        
+        const holding = user.portfolio[holdingIndex];
+        const isShort = holding.type === 'SHORT';
+        
+        if (isShort) {
+          profitLoss = (holding.avgBuyPrice - currentPrice) * holding.quantity;
+        } else {
+          profitLoss = (currentPrice - holding.avgBuyPrice) * holding.quantity;
         }
-        profitLoss = (currentPrice - holding.avgBuyPrice) * quantity;
-        user.cashBalance += totalValue;
-        holding.quantity -= quantity;
-        if (holding.quantity < 0.000001) {
-          user.portfolio = user.portfolio.filter(p => p.coin !== value.coin);
-        }
+        
+        user.cashBalance += (holding.collateral + profitLoss);
+        user.portfolio.splice(holdingIndex, 1);
       }
       store.saveUser(user);
 
@@ -79,43 +104,80 @@ router.post('/execute', protect, async (req, res) => {
         price: currentPrice,
         totalValue,
         profitLoss,
+        leverage: value.leverage,
+        stopLoss: value.stopLoss,
+        takeProfit: value.takeProfit,
       });
 
       return res.json({
         message: `${value.type} order executed successfully`,
-        trade: { id: trade._id, type: trade.type, coin: trade.coin, quantity: trade.quantity, price: trade.price, totalValue: trade.totalValue, profitLoss: trade.profitLoss, timestamp: trade.timestamp },
+        trade,
         cashBalance: user.cashBalance,
       });
     }
 
-    // MongoDB mode
+    // Handle MONGODB Mode
     const { User, Trade } = getMongoModels();
     const user = await User.findById(req.user._id);
     let profitLoss = 0;
 
-    if (value.type === 'BUY') {
-      if (user.cashBalance < totalValue) return res.status(400).json({ error: 'Insufficient balance', available: user.cashBalance, required: totalValue });
-      user.cashBalance -= totalValue;
-      const existing = user.portfolio.find(p => p.coin === value.coin);
-      if (existing) {
-        const totalQty = existing.quantity + quantity;
-        existing.avgBuyPrice = (existing.avgBuyPrice * existing.quantity + currentPrice * quantity) / totalQty;
-        existing.quantity = totalQty;
-      } else {
-        user.portfolio.push({ coin: value.coin, symbol: value.symbol.toUpperCase(), quantity, avgBuyPrice: currentPrice });
+    if (value.type === 'BUY' || value.type === 'LONG' || value.type === 'SHORT') {
+      if (user.cashBalance < costBasis) return res.status(400).json({ error: 'Insufficient balance', available: user.cashBalance, required: costBasis });
+      
+      user.cashBalance -= costBasis;
+      
+      let liqPrice = null;
+      if (value.leverage > 1) {
+        liqPrice = value.type === 'SHORT' 
+          ? currentPrice * (1 + 0.9 / value.leverage)
+          : currentPrice * (1 - 0.9 / value.leverage);
       }
-    } else {
-      const holding = user.portfolio.find(p => p.coin === value.coin);
-      if (!holding || holding.quantity < quantity) return res.status(400).json({ error: 'Insufficient coin balance', available: holding ? holding.quantity : 0, required: quantity });
-      profitLoss = (currentPrice - holding.avgBuyPrice) * quantity;
-      user.cashBalance += totalValue;
-      holding.quantity -= quantity;
-      if (holding.quantity < 0.000001) user.portfolio = user.portfolio.filter(p => p.coin !== value.coin);
-    }
-    await user.save();
 
-    const trade = await Trade.create({ userId: user._id, type: value.type, coin: value.coin, symbol: value.symbol.toUpperCase(), quantity, price: currentPrice, totalValue, profitLoss });
-    res.json({ message: `${value.type} order executed successfully`, trade: { id: trade._id, type: trade.type, coin: trade.coin, quantity: trade.quantity, price: trade.price, totalValue: trade.totalValue, profitLoss: trade.profitLoss, timestamp: trade.timestamp }, cashBalance: user.cashBalance });
+      user.portfolio.push({ 
+        coin: value.coin, 
+        symbol: value.symbol.toUpperCase(), 
+        quantity, 
+        avgBuyPrice: currentPrice,
+        leverage: value.leverage,
+        stopLoss: value.stopLoss,
+        takeProfit: value.takeProfit,
+        liquidationPrice: liqPrice,
+        type: value.type === 'SHORT' ? 'SHORT' : 'LONG',
+        collateral: costBasis
+      });
+    } else {
+      const holdingIndex = user.portfolio.findIndex(p => p.coin === value.coin);
+      if (holdingIndex === -1) return res.status(400).json({ error: 'No position found' });
+      
+      const holding = user.portfolio[holdingIndex];
+      const isShort = holding.type === 'SHORT';
+      
+      if (isShort) {
+        profitLoss = (holding.avgBuyPrice - currentPrice) * holding.quantity;
+      } else {
+        profitLoss = (currentPrice - holding.avgBuyPrice) * holding.quantity;
+      }
+      
+      user.cashBalance += (holding.collateral + profitLoss);
+      user.portfolio.pull(holding._id);
+    }
+    
+    await user.save();
+    const trade = await Trade.create({ 
+      userId: user._id, 
+      type: value.type, 
+      coin: value.coin, 
+      symbol: value.symbol.toUpperCase(), 
+      quantity, 
+      price: currentPrice, 
+      totalValue, 
+      profitLoss,
+      leverage: value.leverage,
+      stopLoss: value.stopLoss,
+      takeProfit: value.takeProfit
+    });
+
+    res.json({ message: `${value.type} order executed successfully`, trade, cashBalance: user.cashBalance });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Trade execution failed' });

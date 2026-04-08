@@ -20,12 +20,38 @@ router.get('/', protect, async (req, res) => {
     const holdings = user.portfolio.map(holding => {
       const priceData = prices.find(p => p.symbol === holding.symbol);
       const currentPrice = priceData ? priceData.price : holding.avgBuyPrice;
-      const currentValue = currentPrice * holding.quantity;
-      const investedValue = holding.avgBuyPrice * holding.quantity;
-      const pnl = currentValue - investedValue;
-      const pnlPercent = investedValue > 0 ? ((pnl / investedValue) * 100).toFixed(2) : '0.00';
+      
+      const isShort = holding.type === 'SHORT';
+      let currentValue, profitLoss;
+      
+      if (isShort) {
+        profitLoss = (holding.avgBuyPrice - currentPrice) * holding.quantity;
+      } else {
+        profitLoss = (currentPrice - holding.avgBuyPrice) * holding.quantity;
+      }
+      
+      currentValue = holding.collateral + profitLoss;
+      const investedValue = holding.collateral;
+      const pnlPercent = investedValue > 0 ? ((profitLoss / investedValue) * 100).toFixed(2) : '0.00';
+      
       holdingsValue += currentValue;
-      return { coin: holding.coin, symbol: holding.symbol, quantity: holding.quantity, avgBuyPrice: holding.avgBuyPrice, currentPrice, currentValue, investedValue, pnl, pnlPercent: parseFloat(pnlPercent), change24h: priceData ? priceData.change24h : 0 };
+      return { 
+        coin: holding.coin, 
+        symbol: holding.symbol, 
+        quantity: holding.quantity, 
+        avgBuyPrice: holding.avgBuyPrice, 
+        currentPrice, 
+        currentValue, 
+        investedValue, 
+        pnl: profitLoss, 
+        pnlPercent: parseFloat(pnlPercent), 
+        change24h: priceData ? priceData.change24h : 0,
+        leverage: holding.leverage || 1,
+        type: holding.type || 'LONG',
+        stopLoss: holding.stopLoss,
+        takeProfit: holding.takeProfit,
+        liquidationPrice: holding.liquidationPrice
+      };
     });
 
     const totalPortfolioValue = user.cashBalance + holdingsValue;
@@ -34,6 +60,7 @@ router.get('/', protect, async (req, res) => {
     const totalPnLPercent = ((totalPnL / totalInvested) * 100).toFixed(2);
 
     res.json({ cashBalance: user.cashBalance, holdingsValue, totalPortfolioValue, totalInvested, totalPnL, totalPnLPercent: parseFloat(totalPnLPercent), holdings });
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });

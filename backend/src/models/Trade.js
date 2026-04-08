@@ -39,6 +39,10 @@ const tradeSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  leverage: { type: Number, default: 1 },
+  stopLoss: { type: Number, default: null },
+  takeProfit: { type: Number, default: null },
+  reason: { type: String, default: null },
   timestamp: {
     type: Date,
     default: Date.now,

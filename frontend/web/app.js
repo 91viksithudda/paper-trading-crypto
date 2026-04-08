@@ -179,7 +179,6 @@ function openTradeModal(coin,symbol,price,type) {
   
   if(tradeInterval) clearInterval(tradeInterval);
   
-  // Wait for the modal layout to be visible before rendering chart
   setTimeout(() => {
     try {
       if (window.TradingView) {
@@ -275,29 +274,96 @@ function setTradeType(type) {
   updateModalBalance();
 }
 
+let currentLeverage = 1;
+
 function updateModalBalance() {
   if(currentUser) document.getElementById('modal-balance').textContent=fmt(currentUser.cashBalance);
 }
 
-document.getElementById('trade-amount').addEventListener('input', function() {
-  const usd=parseFloat(this.value)||0;
-  const qty=tradeState.price>0? usd/tradeState.price : 0;
-  document.getElementById('modal-estimate').textContent=fmtQty(qty)+' '+tradeState.coin;
-});
+function setTradeType(type) {
+  tradeState.type = type;
+  document.getElementById('type-long').classList.toggle('active', type === 'LONG');
+  document.getElementById('type-short').classList.toggle('active', type === 'SHORT');
+  
+  const btn = document.querySelector('.trade-actions .btn');
+  if (btn) {
+    btn.className = `btn btn-${type === 'SHORT' ? 'sell' : 'buy'}`;
+    btn.textContent = 'Confirm Order';
+  }
+  calcTradeData();
+}
+
+function updateLeverage(val) {
+  currentLeverage = parseInt(val);
+  document.getElementById('leverage-val').innerText = `${val}x`;
+  calcTradeData();
+}
+
+function toggleBracketOptions() {
+  const options = document.getElementById('bracket-options');
+  const arrow = document.getElementById('bracket-arrow');
+  options.classList.toggle('active');
+  arrow.style.transform = options.classList.contains('active') ? 'rotate(180deg)' : '';
+}
+
+function calcTradeData() {
+  const amount = parseFloat(document.getElementById('trade-amount').value) || 0;
+  const symbol = tradeState.symbol;
+  const price = tradeState.price || 0;
+  
+  if (price > 0 && amount > 0) {
+    const margin = amount / currentLeverage;
+    const qty = amount / price;
+    
+    document.getElementById('modal-qty').innerText = qty.toFixed(4);
+    document.getElementById('modal-margin').innerText = `$${margin.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+    
+    let liqPrice;
+    if (tradeState.type === 'SHORT') {
+      liqPrice = price * (1 + 0.9 / currentLeverage);
+    } else {
+      liqPrice = price * (1 - 0.9 / currentLeverage);
+    }
+    document.getElementById('modal-liq').innerText = `$${liqPrice.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+  } else {
+    document.getElementById('modal-qty').innerText = '0.000';
+    document.getElementById('modal-margin').innerText = '$0.00';
+    document.getElementById('modal-liq').innerText = '--';
+  }
+}
 
 async function executeTrade() {
-  const amount=parseFloat(document.getElementById('trade-amount').value);
-  if(!amount||amount<=0) return toast('Enter a valid amount','error');
+  const amount = parseFloat(document.getElementById('trade-amount').value);
+  if (!amount || amount <= 0) return toast('Enter valid amount','error');
+
+  const sl = parseFloat(document.getElementById('sl-price').value) || null;
+  const tp = parseFloat(document.getElementById('tp-price').value) || null;
+
   try {
-    const r=await fetch(`${API}/trade/execute`,{method:'POST',headers:authHeaders(),body:JSON.stringify({type:tradeState.type,symbol:tradeState.symbol,coin:tradeState.coin,quantityInUSD:amount})});
+    const r=await fetch(`${API}/trade/execute`,{
+      method:'POST',
+      headers:authHeaders(),
+      body:JSON.stringify({
+        type: tradeState.type,
+        symbol: tradeState.symbol,
+        coin: tradeState.coin,
+        quantityInUSD: amount,
+        leverage: currentLeverage,
+        stopLoss: sl,
+        takeProfit: tp
+      })
+    });
+    
     const d=await r.json();
     if(!r.ok) return toast(d.error||'Trade failed','error');
+    
     toast(d.message,'success');
     if(d.cashBalance!=null) { currentUser.cashBalance=d.cashBalance; updateBalance(); }
     closeTradeModal();
     loadMarket();
   } catch(err) { toast('Trade failed','error'); }
 }
+
 
 function updateBalance() {
   if(currentUser) document.getElementById('top-balance').textContent=fmt(currentUser.cashBalance);

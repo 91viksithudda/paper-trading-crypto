@@ -38,6 +38,12 @@ const userSchema = new mongoose.Schema({
       symbol: { type: String, required: true },
       quantity: { type: Number, required: true, min: 0 },
       avgBuyPrice: { type: Number, required: true, min: 0 },
+      leverage: { type: Number, default: 1, min: 1, max: 100 },
+      stopLoss: { type: Number, default: null },
+      takeProfit: { type: Number, default: null },
+      liquidationPrice: { type: Number, default: null },
+      type: { type: String, enum: ['LONG', 'SHORT'], default: 'LONG' },
+      collateral: { type: Number, default: 0 },
     },
   ],
   totalDeposited: {
