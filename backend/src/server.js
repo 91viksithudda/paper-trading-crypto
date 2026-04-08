@@ -30,7 +30,6 @@ if (!process.env.VERCEL) {
 app.use(express.json());
 
 // Let the app know if we're in in-memory mode
-let usingMemory = false;
 app.locals.usingMemory = false;
 
 // Import routes
@@ -47,11 +46,12 @@ app.use('/api/trade', tradeRoutes);
 app.use('/api/portfolio', portfolioRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
 
-app.get('/health', async (req, res) => {
+app.get('/api/health', async (req, res) => {
   res.json({ 
     status: 'OK', 
     mode: process.env.USE_MEMORY === 'true' ? 'in-memory' : 'mongodb',
     vercel: !!process.env.VERCEL,
+    dbConnected: mongoose.connection.readyState >= 1,
     timestamp: new Date().toISOString() 
   });
 });
@@ -69,7 +69,7 @@ app.use((req, res) => {
 });
 
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  console.error('SERVER ERROR:', err.stack);
   res.status(err.status || 500).json({ error: err.message || 'Internal Server Error' });
 });
 
@@ -80,40 +80,50 @@ const PORT = process.env.PORT || 5000;
  */
 let isDBConnected = false;
 const connectDB = async () => {
-  if (isDBConnected || mongoose.connection.readyState >= 1) return;
+  if (isDBConnected || mongoose.connection.readyState >= 1) return true;
   const mongoUri = process.env.MONGODB_URI;
-  if (!mongoUri || mongoUri.includes('<username>')) return;
+  
+  if (!mongoUri || mongoUri.includes('<username>')) {
+    console.warn('⚠️ No valid MONGODB_URI found. Falling back to IN-MEMORY mode.');
+    process.env.USE_MEMORY = 'true';
+    return false;
+  }
   
   try {
-    // Faster timeout for serverless
-    await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 5000 });
+    process.env.USE_MEMORY = 'false';
+    await mongoose.connect(mongoUri, { 
+      serverSelectionTimeoutMS: 5000,
+      connectTimeoutMS: 10000 
+    });
     isDBConnected = true;
     console.log('✅ MongoDB connected');
+    return true;
   } catch (err) {
     console.error('❌ MongoDB Connection Error:', err.message);
+    process.env.USE_MEMORY = 'true';
+    return false;
   }
 };
 
 // Middleware to ensure DB and Cache are ready
 let isAppInitialized = false;
 app.use(async (req, res, next) => {
-  if (!isAppInitialized) {
-    const mongoUri = process.env.MONGODB_URI;
-    process.env.USE_MEMORY = (mongoUri && !mongoUri.includes('<username>')) ? 'false' : 'true';
-    
-    // Attempt DB and Price connection but don't block too long
-    Promise.all([
-      connectDB(),
-      updatePriceCache().catch(e => console.error('Price update failed', e.message))
-    ]);
-    
+  // If we're on Vercel, we need to ensure DB is connected for EVERY request 
+  // because the instance might be cold-started or reused without global state.
+  if (process.env.VERCEL) {
+    await connectDB();
+    // Also try to update price cache if it's empty
+    const { getPrice, getTopSymbols } = require('./services/binanceService');
+    const firstSymbol = getTopSymbols()[0].symbol;
+    if (!getPrice(firstSymbol)) {
+      await updatePriceCache().catch(() => {});
+    }
+  } else if (!isAppInitialized) {
+    await connectDB();
+    await updatePriceCache().catch(() => {});
     isAppInitialized = true;
   }
   
-  // Always try to connect if not connected
-  if (process.env.VERCEL && !isDBConnected) {
-    await connectDB().catch(() => {}); 
-  }
   next();
 });
 

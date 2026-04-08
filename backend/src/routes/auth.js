@@ -4,16 +4,18 @@ const jwt = require('jsonwebtoken');
 const Joi = require('joi');
 const store = require('../db/inMemoryStore');
 
+// Require User model normally (it handles mongoose.models internally)
+let User;
+try {
+  User = require('../models/User');
+} catch (e) {
+  console.warn('⚠️ User model could not be loaded. Memory mode will be used if needed.');
+}
+
 const signToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET || 'antigravity_jwt_secret_2024', {
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
   });
-};
-
-// Helper to get user model (mongoose or memory)
-const getMongoUser = () => {
-  if (process.env.USE_MEMORY === 'true') return null;
-  try { return require('../models/User'); } catch { return null; }
 };
 
 // Signup
@@ -27,20 +29,20 @@ router.post('/signup', async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ error: error.details[0].message });
 
-    if (process.env.USE_MEMORY === 'true') {
+    // Use memory mode if forced or if DB is not available
+    if (process.env.USE_MEMORY === 'true' || !User) {
       const existing = store.findUserByEmailOrUsername(value.email, value.username);
       if (existing) return res.status(409).json({ error: 'Email or username already exists' });
 
       const user = await store.createUser(value);
       const token = signToken(user._id);
       return res.status(201).json({
-        message: 'Account created successfully',
+        message: 'Account created successfully (Memory Mode)',
         token,
         user: { id: user._id, username: user.username, email: user.email, cashBalance: user.cashBalance, portfolio: user.portfolio, createdAt: user.createdAt },
       });
     }
 
-    const User = getMongoUser();
     const existingUser = await User.findOne({ $or: [{ email: value.email }, { username: value.username }] });
     if (existingUser) return res.status(409).json({ error: 'Email or username already exists' });
 
@@ -52,7 +54,7 @@ router.post('/signup', async (req, res) => {
       user: { id: user._id, username: user.username, email: user.email, cashBalance: user.cashBalance, portfolio: user.portfolio, createdAt: user.createdAt },
     });
   } catch (err) {
-    console.error(err);
+    console.error('Signup Error:', err);
     res.status(500).json({ error: 'Server error: ' + err.message });
   }
 });
@@ -67,7 +69,7 @@ router.post('/login', async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ error: error.details[0].message });
 
-    if (process.env.USE_MEMORY === 'true') {
+    if (process.env.USE_MEMORY === 'true' || !User) {
       const user = store.findUserByEmail(value.email);
       if (!user) return res.status(401).json({ error: 'Invalid email or password' });
       const valid = await store.comparePassword(value.password, user.password);
@@ -75,17 +77,22 @@ router.post('/login', async (req, res) => {
 
       const token = signToken(user._id);
       return res.json({
-        message: 'Login successful',
+        message: 'Login successful (Memory Mode)',
         token,
         user: { id: user._id, username: user.username, email: user.email, cashBalance: user.cashBalance, portfolio: user.portfolio, createdAt: user.createdAt },
       });
     }
 
-    const User = getMongoUser();
     const user = await User.findOne({ email: value.email }).select('+password');
-    if (!user || !(await user.comparePassword(value.password))) {
+    if (!user) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
+    
+    const isMatch = await user.comparePassword(value.password);
+    if (!isMatch) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
     const token = signToken(user._id);
     res.json({
       message: 'Login successful',
@@ -93,7 +100,7 @@ router.post('/login', async (req, res) => {
       user: { id: user._id, username: user.username, email: user.email, cashBalance: user.cashBalance, portfolio: user.portfolio, createdAt: user.createdAt },
     });
   } catch (err) {
-    console.error(err);
+    console.error('Login Error:', err);
     res.status(500).json({ error: 'Server error: ' + err.message });
   }
 });
