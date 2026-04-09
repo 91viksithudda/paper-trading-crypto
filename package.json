@@ -1,8 +1,11 @@
 {
   "name": "paper-trading-root",
   "version": "1.0.0",
+  "main": "index.js",
   "scripts": {
-    "build": "cd backend && npm install"
+    "build": "cd backend && npm install",
+    "postinstall": "cd backend && npm install",
+    "start": "node index.js"
   },
   "dependencies": {
     "axios": "^1.6.8",
