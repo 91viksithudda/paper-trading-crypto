@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: paper-trading-crypto
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 18.0.0
+      - key: PORT
+        value: 5000
+      - key: MONGODB_URI
+        value: "" # User should set this in Render dashboard
+      - key: JWT_SECRET
+        value: "antigravity_secret_key_change_me"
+      - key: BINANCE_BASE_URL
+        value: "https://api.binance.com"

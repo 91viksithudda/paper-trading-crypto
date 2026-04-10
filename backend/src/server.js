@@ -128,19 +128,33 @@ app.use(async (req, res, next) => {
   next();
 });
 
-// For local development
+// For local and Render deployment
 if (!process.env.VERCEL) {
   const cron = require('node-cron');
-  const startLocal = async () => {
-    await connectDB();
-    await updatePriceCache().catch(() => {});
-    cron.schedule('*/15 * * * * *', async () => {
-      await updatePriceCache();
-      await checkAutomatedOrders();
+  const startServer = async () => {
+    // Start listening immediately so Render/cloud platforms see the port is open
+    const server = app.listen(PORT, () => {
+      console.log(`🚀 Server listening on port ${PORT}`);
+      console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
     });
-    app.listen(PORT, () => console.log(`🚀 API running on http://localhost:${PORT}`));
+
+    // Initialize services in the background
+    try {
+      console.log('🏗️ Initializing services...');
+      await connectDB();
+      await updatePriceCache();
+      console.log('✅ Services initialized successfully');
+      
+      // Schedule background tasks
+      cron.schedule('*/15 * * * * *', async () => {
+        await updatePriceCache().catch(e => console.error('Cron Price Error:', e.message));
+        await checkAutomatedOrders().catch(e => console.error('Cron Order Error:', e.message));
+      });
+    } catch (err) {
+      console.error('❌ Initialization Warning:', err.message);
+    }
   };
-  startLocal();
+  startServer();
 }
 
 module.exports = app;

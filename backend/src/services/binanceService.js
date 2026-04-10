@@ -30,19 +30,25 @@ const TOP_SYMBOLS = [
 let priceCache = {};
 let ticker24Cache = {};
 let lastUpdate = null;
+let isFirstLoad = true;
 
 const updatePriceCache = async () => {
   try {
     const symbols = TOP_SYMBOLS.map((s) => s.symbol);
-
-    // Fetch 24hr ticker data for all symbols
+    
+    // Strategy: Fetch ALL tickers and filter locally. 
+    // This is MORE reliable than passing 'symbols' array which can have encoding issues on some platforms.
+    console.log(`📡 Fetching market data from Binance API...`);
     const response = await axios.get(`${BINANCE_BASE}/api/v3/ticker/24hr`, {
-      params: {
-        symbols: JSON.stringify(symbols),
-      },
       timeout: 10000,
+      headers: { 'Accept': 'application/json' }
     });
 
+    if (!Array.isArray(response.data)) {
+      throw new Error(`Invalid response format from Binance: ${typeof response.data}`);
+    }
+
+    let updatedCount = 0;
     response.data.forEach((ticker) => {
       const meta = TOP_SYMBOLS.find((s) => s.symbol === ticker.symbol);
       if (meta) {
@@ -58,13 +64,23 @@ const updatePriceCache = async () => {
           quoteVolume: parseFloat(ticker.quoteVolume),
         };
         priceCache[ticker.symbol] = parseFloat(ticker.lastPrice);
+        updatedCount++;
       }
     });
 
-    lastUpdate = new Date();
-    console.log(`📊 Price cache updated at ${lastUpdate.toISOString()}`);
+    if (updatedCount === 0) {
+      console.warn('⚠️ Binance symbols found. Check if Binance is restricted in your region.');
+    } else {
+      lastUpdate = new Date();
+      isFirstLoad = false;
+      console.log(`✅ Price cache updated: ${updatedCount} coins tracked at ${lastUpdate.toISOString()}`);
+    }
   } catch (err) {
     console.error('❌ Failed to update price cache:', err.message);
+    
+    if (err.response) {
+      console.error('Binance Response Error:', err.response.status, err.response.data);
+    }
   }
 };
 

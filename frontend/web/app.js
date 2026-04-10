@@ -190,14 +190,34 @@ const authHeaders = () => ({'Content-Type':'application/json','Authorization':'B
 
 // ==================== MARKET ====================
 async function loadMarket() {
+  const lastUpdateEl = document.getElementById('last-update');
   try {
+    if (lastUpdateEl) lastUpdateEl.textContent = 'Updating...';
     const r=await fetch(`${API}/market/prices`);
+    if (!r.ok) throw new Error('Backend update failed');
     const d=await r.json();
     marketData=d.data||[];
+    
+    if (lastUpdateEl) {
+      if (marketData.length > 0) {
+        lastUpdateEl.textContent = 'Live';
+        lastUpdateEl.style.background = 'var(--green-glow)';
+      } else {
+        lastUpdateEl.textContent = 'No Data';
+        lastUpdateEl.style.background = 'var(--red-glow)';
+      }
+    }
+    
     renderMarket();
     renderMarketStats();
     updateBalance();
-  } catch(err) { console.error('Market load failed:',err); }
+  } catch(err) { 
+    console.error('Market load failed:',err);
+    if (lastUpdateEl) {
+      lastUpdateEl.textContent = 'Error';
+      lastUpdateEl.style.background = 'var(--red-glow)';
+    }
+  }
 }
 
 function renderMarketStats() {
@@ -217,7 +237,10 @@ function renderMarketStats() {
 
 function renderMarket() {
   const body=document.getElementById('market-body');
-  if(!marketData.length) { body.innerHTML='<tr><td colspan="6" class="empty-state"><div class="spinner"></div></td></tr>'; return; }
+  if(!marketData.length) { 
+    body.innerHTML='<tr><td colspan="6" class="empty-state"><div class="spinner"></div><div style="margin-top:10px; color:var(--text-muted)">Waiting for market data...</div><button class="btn btn-sm" style="margin-top:10px; font-size:10px" onclick="loadMarket()">RETRY</button></td></tr>'; 
+    return; 
+  }
   body.innerHTML=marketData.map(c=>{
     const color=COIN_COLORS[c.coin]||'#6366f1';
     const up=c.change24h>=0;
