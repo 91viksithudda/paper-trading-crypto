@@ -69,8 +69,8 @@ function logout() {
   token=null; currentUser=null;
   localStorage.removeItem('ag_token');
   localStorage.removeItem('ag_user');
-  document.getElementById('auth-screen').style.display='flex';
-  document.getElementById('app').classList.remove('active');
+  // Hard reload to ensure all memory/DOM state is wiped clean
+  window.location.reload();
 }
 
 // ==================== APP ENTRY ====================
@@ -78,7 +78,14 @@ function enterApp() {
   document.getElementById('auth-screen').style.display='none';
   document.getElementById('app').classList.add('active');
   document.getElementById('top-avatar').textContent=(currentUser.username||'U')[0].toUpperCase();
+  
+  // Clear any leftover data in global variables
+  marketData = [];
+  
+  // Initial loads
   loadMarket();
+  loadPortfolio(); // Start fresh
+  
   setInterval(loadMarket,15000);
 }
 
@@ -482,7 +489,11 @@ function renderHoldings(holdings) {
   const el=document.getElementById('holdings-list');
   const pel=document.getElementById('pending-orders-list');
   
-  if(!holdings.length) { 
+  // Clear lists before rendering
+  el.innerHTML = '';
+  pel.innerHTML = '';
+  
+  if(!holdings || !holdings.length) { 
     el.innerHTML='<div class="empty-state"><div class="empty-state-icon">💰</div><div class="empty-state-text">No holdings yet. Start trading!</div></div>'; 
     pel.innerHTML='<div class="empty-state"><div class="empty-state-text" style="font-size:12px">No active exit orders.</div></div>';
     return; 
