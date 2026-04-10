@@ -82,8 +82,83 @@ function enterApp() {
   setInterval(loadMarket,15000);
 }
 
+// ==================== CLOSE TRADE ====================
+async function closePosition(coin, symbol, quantity) {
+  const targetPrice = prompt(`Enter price to close ${coin} (leave empty to close at Market Price):`);
+  
+  // If user cancelled the prompt
+  if (targetPrice === null) return;
+
+  // Case 1: Limit Close (User specified a price)
+  if (targetPrice.trim() !== '') {
+    const price = parseFloat(targetPrice);
+    if (isNaN(price)) return toast('Invalid price entered', 'error');
+    
+    try {
+      const r = await fetch(`${API}/portfolio/set-exit-price`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ coin, price })
+      });
+      const d = await r.json();
+      if (!r.ok) return toast(d.error || 'Failed to set exit price', 'error');
+      toast(d.message, 'success');
+      loadPortfolio();
+      return;
+    } catch (err) {
+      return toast('Connection error', 'error');
+    }
+  }
+
+  // Case 2: Market Close (User left price empty)
+  if(!confirm(`Are you sure you want to close your ${coin} position at Market Price?`)) return;
+  
+  try {
+    const r = await fetch(`${API}/trade/execute`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({
+        type: 'SELL',
+        symbol: symbol,
+        coin: coin,
+        quantityInCoin: quantity // Added quantity to fix validation error
+      })
+    });
+    
+    const d = await r.json();
+    if(!r.ok) return toast(d.error || 'Failed to close position', 'error');
+    
+    toast(d.message || 'Position closed successfully', 'success');
+    if(d.cashBalance != null) { currentUser.cashBalance = d.cashBalance; updateBalance(); }
+    loadPortfolio();
+  } catch(err) {
+    console.error('Close error:', err);
+    toast('Connection error while closing position', 'error');
+  }
+}
+
+// ==================== CANCEL EXIT ORDER ====================
+async function cancelExitOrder(coin) {
+  try {
+    const r = await fetch(`${API}/portfolio/cancel-exit-price`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ coin })
+    });
+    const d = await r.json();
+    if (!r.ok) return toast(d.error || 'Failed to cancel order', 'error');
+    toast(d.message, 'success');
+    loadPortfolio();
+  } catch (err) {
+    toast('Connection error', 'error');
+  }
+}
+
 // ==================== NAVIGATION ====================
 function switchPage(page) {
+  // Close any open modals when switching pages
+  closeTradeModal();
+  
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');
@@ -382,21 +457,61 @@ function renderPortfolioStats(p,s) {
 
 function renderHoldings(holdings) {
   const el=document.getElementById('holdings-list');
-  if(!holdings.length) { el.innerHTML='<div class="empty-state"><div class="empty-state-icon">💰</div><div class="empty-state-text">No holdings yet. Start trading!</div></div>'; return; }
+  const pel=document.getElementById('pending-orders-list');
+  
+  if(!holdings.length) { 
+    el.innerHTML='<div class="empty-state"><div class="empty-state-icon">💰</div><div class="empty-state-text">No holdings yet. Start trading!</div></div>'; 
+    pel.innerHTML='<div class="empty-state"><div class="empty-state-text" style="font-size:12px">No active exit orders.</div></div>';
+    return; 
+  }
+  
+  // Render Holdings
   el.innerHTML=holdings.map(h=>{
     const color=COIN_COLORS[h.coin]||'#6366f1';
     const up=h.pnl>=0;
+    const typeLabel = h.type || 'LONG';
     return `<div class="holding-card">
       <div class="holding-left">
         <div class="coin-icon" style="background:${color}">${h.coin.slice(0,2)}</div>
-        <div><div class="coin-name">${h.coin}</div><div class="coin-symbol">${fmtQty(h.quantity)} coins</div></div>
+        <div>
+          <div class="coin-name">${h.coin} <span class="badge" style="background:${typeLabel==='SHORT'?'var(--red-glow)':'var(--green-glow)'};color:${typeLabel==='SHORT'?'var(--red)':'var(--green)'}">${typeLabel} ${h.leverage}x</span></div>
+          <div class="coin-symbol">${fmtQty(h.quantity)} coins</div>
+          <div style="font-size:11px; margin-top:4px; color:var(--text-muted)">
+            <span>Entry: ${fmt(h.avgBuyPrice)}</span>
+            ${h.liquidationPrice ? `<span style="margin-left:8px; color:var(--red)">Liq: ${fmt(h.liquidationPrice)}</span>` : ''}
+          </div>
+        </div>
       </div>
-      <div class="holding-right">
-        <div class="holding-value">${fmt(h.currentValue)}</div>
-        <div class="holding-pnl ${up?'positive':'negative'}">${up?'+':''}${fmt(h.pnl)} (${h.pnlPercent}%)</div>
+      <div class="holding-right" style="display:flex; align-items:center; gap:20px;">
+        <div style="text-align:right">
+          <div class="holding-value">${fmt(h.currentValue)}</div>
+          <div class="holding-pnl ${up?'positive':'negative'}">${up?'+':''}${fmt(h.pnl)} (${h.pnlPercent}%)</div>
+        </div>
+        <button class="trade-btn-sm sell" onclick="closePosition('${h.coin}','${h.symbol}',${h.quantity})" style="background:var(--red); color:#fff; border-radius:4px; padding:8px 12px; font-weight:700;">CLOSE</button>
       </div>
     </div>`;
   }).join('');
+
+  // Render Pending Orders (Extract TP/SL from positions)
+  const pending = [];
+  holdings.forEach(h => {
+    if (h.takeProfit) pending.push({ coin: h.coin, type: 'TP', price: h.takeProfit });
+    if (h.stopLoss) pending.push({ coin: h.coin, type: 'SL', price: h.stopLoss });
+  });
+
+  if (!pending.length) {
+    pel.innerHTML = '<div class="empty-state"><div class="empty-state-text" style="font-size:12px">No active exit orders.</div></div>';
+  } else {
+    pel.innerHTML = pending.map(o => `
+      <div class="order-card">
+        <div class="order-info">
+          <span class="order-type ${o.type.toLowerCase()}">${o.type === 'TP' ? 'Take Profit' : 'Stop Loss'}</span>
+          <span class="order-price">${o.coin} @ ${fmt(o.price)}</span>
+        </div>
+        <button class="order-cancel" onclick="cancelExitOrder('${o.coin}')" title="Cancel Order">&times;</button>
+      </div>
+    `).join('');
+  }
 }
 
 // ==================== TRADES ====================

@@ -92,4 +92,87 @@ router.get('/stats', protect, async (req, res) => {
   }
 });
 
+router.post('/set-exit-price', protect, async (req, res) => {
+  try {
+    const { coin, price } = req.body;
+    const targetPrice = parseFloat(price);
+    if (isNaN(targetPrice)) return res.status(400).json({ error: 'Invalid price' });
+
+    let user;
+    if (process.env.USE_MEMORY === 'true') {
+      user = store.findUserById(req.user._id || req.user.id);
+    } else {
+      const User = require('../models/User');
+      user = await User.findById(req.user._id);
+    }
+
+    const posIndex = user.portfolio.findIndex(p => p.coin === coin);
+    if (posIndex === -1) return res.status(404).json({ error: 'Position not found' });
+
+    const pos = user.portfolio[posIndex];
+    const prices = getAllPrices();
+    const priceData = prices.find(p => p.symbol === pos.symbol);
+    const currentPrice = priceData ? priceData.price : pos.avgBuyPrice;
+
+    // Logic to decide if it's a TP or SL
+    // For LONG: Price > Current -> TP, Price < Current -> SL
+    // For SHORT: Price < Current -> TP, Price > Current -> SL
+    if (pos.type === 'SHORT') {
+      if (targetPrice < currentPrice) {
+        pos.takeProfit = targetPrice;
+      } else {
+        pos.stopLoss = targetPrice;
+      }
+    } else {
+      if (targetPrice > currentPrice) {
+        pos.takeProfit = targetPrice;
+      } else {
+        pos.stopLoss = targetPrice;
+      }
+    }
+
+    if (process.env.USE_MEMORY === 'true') {
+      store.saveUser(user);
+    } else {
+      await user.save();
+    }
+
+    res.json({ message: `Exit order set at $${targetPrice}`, portfolio: user.portfolio });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.post('/cancel-exit-price', protect, async (req, res) => {
+  try {
+    const { coin } = req.body;
+    
+    let user;
+    if (process.env.USE_MEMORY === 'true') {
+      user = store.findUserById(req.user._id || req.user.id);
+    } else {
+      const User = require('../models/User');
+      user = await User.findById(req.user._id);
+    }
+
+    const posIndex = user.portfolio.findIndex(p => p.coin === coin);
+    if (posIndex === -1) return res.status(404).json({ error: 'Position not found' });
+
+    user.portfolio[posIndex].takeProfit = null;
+    user.portfolio[posIndex].stopLoss = null;
+
+    if (process.env.USE_MEMORY === 'true') {
+      store.saveUser(user);
+    } else {
+      await user.save();
+    }
+
+    res.json({ message: `Exit order for ${coin} cancelled`, portfolio: user.portfolio });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 module.exports = router;

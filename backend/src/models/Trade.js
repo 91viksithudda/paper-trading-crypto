@@ -9,7 +9,7 @@ const tradeSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['BUY', 'SELL'],
+    enum: ['BUY', 'SELL', 'LONG', 'SHORT'],
     required: true,
   },
   coin: {

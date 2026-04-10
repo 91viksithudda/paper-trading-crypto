@@ -6,9 +6,12 @@ const app = express();
 const PORT = 3000;
 
 // Proxy API requests to the backend
-app.use('/api', createProxyMiddleware({
+// In v3, we can pass the filter as the first argument or in options.
+// We'll use the filter to ensure the full path including /api is sent to the backend.
+app.use(createProxyMiddleware({
   target: 'http://localhost:5000',
   changeOrigin: true,
+  pathFilter: '/api'
 }));
 
 // Serve static files from frontend/web
