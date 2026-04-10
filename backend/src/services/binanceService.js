@@ -34,28 +34,18 @@ let isFirstLoad = true;
 
 const updatePriceCache = async () => {
   try {
-    const symbols = TOP_SYMBOLS.map((s) => s.symbol);
-    
-    // Strategy: Fetch ALL tickers and filter locally. 
-    // This is MORE reliable than passing 'symbols' array which can have encoding issues on some platforms.
-    console.log(`📡 Fetching market data from Binance API...`);
+    console.log(`📡 Fetching market data (Primary: Binance)...`);
     const response = await axios.get(`${BINANCE_BASE}/api/v3/ticker/24hr`, {
-      timeout: 10000,
+      timeout: 8000,
       headers: { 'Accept': 'application/json' }
     });
-
-    if (!Array.isArray(response.data)) {
-      throw new Error(`Invalid response format from Binance: ${typeof response.data}`);
-    }
 
     let updatedCount = 0;
     response.data.forEach((ticker) => {
       const meta = TOP_SYMBOLS.find((s) => s.symbol === ticker.symbol);
       if (meta) {
         ticker24Cache[ticker.symbol] = {
-          symbol: ticker.symbol,
-          coin: meta.coin,
-          name: meta.name,
+          symbol: ticker.symbol, coin: meta.coin, name: meta.name,
           price: parseFloat(ticker.lastPrice),
           change24h: parseFloat(ticker.priceChangePercent),
           high24h: parseFloat(ticker.highPrice),
@@ -68,18 +58,51 @@ const updatePriceCache = async () => {
       }
     });
 
-    if (updatedCount === 0) {
-      console.warn('⚠️ Binance symbols found. Check if Binance is restricted in your region.');
-    } else {
+    if (updatedCount > 0) {
       lastUpdate = new Date();
       isFirstLoad = false;
-      console.log(`✅ Price cache updated: ${updatedCount} coins tracked at ${lastUpdate.toISOString()}`);
+      console.log(`✅ Price cache updated via Binance: ${updatedCount} coins`);
+      return;
     }
   } catch (err) {
-    console.error('❌ Failed to update price cache:', err.message);
+    const isRestricted = err.response && err.response.status === 451;
+    console.warn(isRestricted ? '⚠️ Binance restricted this region (451). Switching to Fallback...' : `❌ Binance Error: ${err.message}`);
     
-    if (err.response) {
-      console.error('Binance Response Error:', err.response.status, err.response.data);
+    // FALLBACK: Use CoinCap API (No region blocking for Render)
+    try {
+      console.log(`🔌 Fetching fallback data from CoinCap...`);
+      const ccRes = await axios.get('https://api.coincap.io/v2/assets', { 
+        params: { limit: 100 },
+        timeout: 10000 
+      });
+
+      let updatedCount = 0;
+      ccRes.data.data.forEach(asset => {
+        const meta = TOP_SYMBOLS.find(s => s.coin === asset.symbol);
+        if (meta) {
+          const price = parseFloat(asset.priceUsd);
+          const change = parseFloat(asset.changePercent24Hr);
+          ticker24Cache[meta.symbol] = {
+            symbol: meta.symbol, coin: meta.coin, name: meta.name,
+            price: price,
+            change24h: change,
+            high24h: price * (1 + Math.abs(change)/100), // Est
+            low24h: price * (1 - Math.abs(change)/100),  // Est
+            volume: parseFloat(asset.volumeUsd24Hr),
+            quoteVolume: parseFloat(asset.vwap24Hr)
+          };
+          priceCache[meta.symbol] = price;
+          updatedCount++;
+        }
+      });
+
+      if (updatedCount > 0) {
+        lastUpdate = new Date();
+        isFirstLoad = false;
+        console.log(`✅ Price cache updated via Fallback (CoinCap): ${updatedCount} coins`);
+      }
+    } catch (ccErr) {
+      console.error('❌ All price providers failed:', ccErr.message);
     }
   }
 };
