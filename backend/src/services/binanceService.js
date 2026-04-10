@@ -36,7 +36,7 @@ const updatePriceCache = async () => {
   const tryFetch = async (url, providerName, mapper) => {
     try {
       console.log(`📡 Fetching from ${providerName}...`);
-      const res = await axios.get(url, { timeout: 12000 });
+      const res = await axios.get(url, { timeout: 10000 });
       const count = mapper(res.data);
       if (count > 0) {
         lastUpdate = new Date();
@@ -51,8 +51,8 @@ const updatePriceCache = async () => {
     return false;
   };
 
-  // 1. Try Binance (Primary)
-  const binanceSuccess = await tryFetch(`${BINANCE_BASE}/api/v3/ticker/24hr`, 'Binance', (data) => {
+  // 1. Try Binance Global (Primary)
+  if (await tryFetch(`${BINANCE_BASE}/api/v3/ticker/24hr`, 'Binance-Global', (data) => {
     let count = 0;
     if (!Array.isArray(data)) return 0;
     data.forEach(t => {
@@ -69,11 +69,52 @@ const updatePriceCache = async () => {
       }
     });
     return count;
-  });
-  if (binanceSuccess) return;
+  })) return;
 
-  // 2. Try CoinGecko (Fallback 1 - Very Reliable)
-  const coingeckoSuccess = await tryFetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&sparkline=false', 'CoinGecko', (data) => {
+  // 2. Try Binance US (Best for USA-based Render servers)
+  if (await tryFetch('https://api.binance.us/api/v3/ticker/24hr', 'Binance-US', (data) => {
+    let count = 0;
+    if (!Array.isArray(data)) return 0;
+    data.forEach(t => {
+      const meta = TOP_SYMBOLS.find(s => s.symbol === t.symbol);
+      if (meta) {
+        ticker24Cache[t.symbol] = {
+          symbol: t.symbol, coin: meta.coin, name: meta.name,
+          price: parseFloat(t.lastPrice), change24h: parseFloat(t.priceChangePercent),
+          high24h: parseFloat(t.highPrice), low24h: parseFloat(t.lowPrice),
+          volume: parseFloat(t.volume), quoteVolume: parseFloat(t.quoteVolume)
+        };
+        priceCache[t.symbol] = parseFloat(t.lastPrice);
+        count++;
+      }
+    });
+    return count;
+  })) return;
+
+  // 3. Try CryptoCompare (Extremely Reliable)
+  const symbolsCsv = TOP_SYMBOLS.map(s => s.coin).join(',');
+  if (await tryFetch(`https://min-api.cryptocompare.com/data/pricemultifull?fsyms=${symbolsCsv}&tsyms=USD`, 'CryptoCompare', (data) => {
+    let count = 0;
+    if (!data || !data.RAW) return 0;
+    Object.keys(data.RAW).forEach(coin => {
+      const info = data.RAW[coin].USD;
+      const meta = TOP_SYMBOLS.find(s => s.coin === coin);
+      if (meta && info) {
+        ticker24Cache[meta.symbol] = {
+          symbol: meta.symbol, coin: meta.coin, name: meta.name,
+          price: info.PRICE, change24h: info.CHANGEPCT24HOUR,
+          high24h: info.HIGH24HOUR, low24h: info.LOW24HOUR,
+          volume: info.VOLUME24HOUR, quoteVolume: info.TOTALVOLUME24H
+        };
+        priceCache[meta.symbol] = info.PRICE;
+        count++;
+      }
+    });
+    return count;
+  })) return;
+
+  // 4. Try CoinGecko (Last Resort)
+  await tryFetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100', 'CoinGecko', (data) => {
     let count = 0;
     if (!Array.isArray(data)) return 0;
     data.forEach(coin => {
@@ -85,27 +126,6 @@ const updatePriceCache = async () => {
           price: price, change24h: coin.price_change_percentage_24h || 0,
           high24h: coin.high_24h || price, low24h: coin.low_24h || price,
           volume: coin.total_volume, quoteVolume: coin.market_cap
-        };
-        priceCache[meta.symbol] = price;
-        count++;
-      }
-    });
-    return count;
-  });
-  if (coingeckoSuccess) return;
-
-  // 3. Try CoinCap (Fallback 2)
-  await tryFetch('https://api.coincap.io/v2/assets?limit=100', 'CoinCap', (data) => {
-    let count = 0;
-    if (!data || !data.data) return 0;
-    data.data.forEach(asset => {
-      const meta = TOP_SYMBOLS.find(s => s.coin === asset.symbol);
-      if (meta) {
-        const price = parseFloat(asset.priceUsd);
-        ticker24Cache[meta.symbol] = {
-          symbol: meta.symbol, coin: meta.coin, name: meta.name,
-          price: price, change24h: parseFloat(asset.changePercent24Hr),
-          high24h: price, low24h: price, volume: parseFloat(asset.volumeUsd24Hr), quoteVolume: 0
         };
         priceCache[meta.symbol] = price;
         count++;
