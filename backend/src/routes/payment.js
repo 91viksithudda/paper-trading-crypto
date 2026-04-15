@@ -5,13 +5,17 @@ const crypto = require('crypto');
 const User = require('../models/User');
 const { protect } = require('../middleware/auth');
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
+let razorpay;
+if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
+  razorpay = new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET,
+  });
+}
 
 router.post('/create-order', protect, async (req, res) => {
   try {
+    if (!razorpay) return res.status(500).json({ error: 'Razorpay keys not configured on server' });
     // Payment of 100 INR for 1000 USD virtual funds
     const amount = 100 * 100; // 100 INR in paise
 
