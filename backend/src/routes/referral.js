@@ -9,6 +9,12 @@ router.get('/stats', protect, async (req, res) => {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
+    // Ensure backwards compatibility for old users who lack a referralCode
+    if (!user.referralCode) {
+      user.referralCode = user.username.substring(0, 3).toUpperCase() + Math.floor(1000 + Math.random() * 9000);
+      try { await user.save(); } catch(e){} // Ignore duplicate key errors if edge case
+    }
+
     const earnings = await ReferralEarning.find({ referrerId: user._id }).populate('referredUserId', 'username createdAt');
     const totalReferred = await User.countDocuments({ referredBy: user.referralCode });
 
