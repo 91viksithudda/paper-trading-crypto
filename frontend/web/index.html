@@ -187,7 +187,10 @@
 
         <div class="stats-grid">
           <div class="stat-card">
-            <div class="stat-value" id="ref-code" style="color:var(--accent-light);">--</div>
+            <div style="display:flex; justify-content:center; align-items:center; gap:8px; margin-bottom:4px;">
+              <div class="stat-value" id="ref-code" style="color:var(--accent-light); margin-bottom:0;">--</div>
+              <button onclick="customizeReferralCode()" title="Customize Coupon" style="background:none; border:none; cursor:pointer; font-size:16px; transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'">✏️</button>
+            </div>
             <div class="stat-label">Referral Code</div>
           </div>
           <div class="stat-card">

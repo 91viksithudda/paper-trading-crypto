@@ -6,7 +6,10 @@ let tradeState = { type:'BUY',coin:'',symbol:'',price:0 };
 
 const urlParams = new URLSearchParams(window.location.search);
 const refParam = urlParams.get('ref');
-if (refParam) localStorage.setItem('ag_referral', refParam);
+if (refParam) {
+  localStorage.setItem('ag_referral', refParam);
+  setTimeout(() => { if (typeof showSignup === 'function') showSignup(); }, 150);
+}
 
 const COIN_COLORS = {BTC:'#f7931a',ETH:'#627eea',SOL:'#14f195',BNB:'#f3ba2f',XRP:'#00aae4',ADA:'#0033ad',DOGE:'#c2a633',AVAX:'#e84142',DOT:'#e6007a',MATIC:'#8247e5',LINK:'#2a5ada',LTC:'#bfbbbb',UNI:'#ff007a',ATOM:'#2e3148',XLM:'#08b5e5',ALGO:'#000',VET:'#15bdff',FTM:'#1969ff',NEAR:'#00c08b',SAND:'#04adef'};
 
@@ -760,6 +763,27 @@ function copyReferralLink() {
   navigator.clipboard.writeText(linkUrl).then(() => {
     toast('Referral link copied!', 'success');
   }).catch(() => toast('Failed to copy', 'error'));
+}
+
+async function customizeReferralCode() {
+  const newCode = prompt("Enter your new Custom Coupon Code (Letters and Numbers only):");
+  if (!newCode) return;
+  
+  try {
+    const r = await fetch(`${API}/referral/customize-code`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ newCode })
+    });
+    const d = await r.json();
+    if (!r.ok) return toast(d.error || 'Failed to update code', 'error');
+    
+    toast(d.message, 'success');
+    if(currentUser) currentUser.referralCode = d.referralCode;
+    loadReferrals();
+  } catch(err) {
+    toast('Connection error', 'error');
+  }
 }
 
 // ==================== INIT ====================
