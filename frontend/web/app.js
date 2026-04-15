@@ -634,5 +634,83 @@ function toggleFullScreen() {
   }
 }
 
+// ==================== FUNDS ====================
+async function addFunds() {
+  try {
+    const r = await fetch(`${API}/payment/create-order`, { method: 'POST', headers: authHeaders() });
+    const orderData = await r.json();
+    if (!r.ok) return toast(orderData.error || 'Failed to create order', 'error');
+
+    const options = {
+      key: 'rzp_test_Sdn9iB87FQlSrb',
+      amount: orderData.amount,
+      currency: 'INR',
+      name: 'Paper Trading',
+      description: 'Buy $1000 Virtual Funds',
+      order_id: orderData.id,
+      handler: async function (response) {
+        try {
+          const verifyR = await fetch(`${API}/payment/verify`, {
+            method: 'POST',
+            headers: authHeaders(),
+            body: JSON.stringify({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature
+            })
+          });
+          const verifyData = await verifyR.json();
+          if (!verifyR.ok) return toast(verifyData.error || 'Payment verification failed', 'error');
+          toast(verifyData.message, 'success');
+          if (verifyData.balance) {
+            currentUser.cashBalance = verifyData.balance;
+            updateBalance();
+          }
+        } catch (err) {
+          toast('Verification connection error', 'error');
+        }
+      },
+      prefill: {
+        name: currentUser.username,
+        email: currentUser.email,
+        contact: '9999999999'
+      },
+      theme: { color: '#6366f1' }
+    };
+    const rzp = new Razorpay(options);
+    rzp.on('payment.failed', function (response) {
+      toast('Payment Failed: ' + response.error.description, 'error');
+    });
+    rzp.open();
+  } catch (err) {
+    toast('Connection error', 'error');
+  }
+}
+
+// ==================== SHARE TARGET ====================
+async function shareWebsite() {
+  const shareData = {
+    title: 'Paper Trading — Crypto Paper Trader',
+    text: 'Practice crypto trading risk-free with real-time Binance market data! Start with $10,000 virtual cash and join the leaderboard!',
+    url: window.location.href
+  };
+
+  if (navigator.share) {
+    try {
+      await navigator.share(shareData);
+      toast('Thanks for sharing!', 'success');
+    } catch (err) {
+      if(err.name !== 'AbortError') toast('Error sharing website', 'error');
+    }
+  } else {
+    // Fallback if Web Share API is not supported
+    navigator.clipboard.writeText(window.location.href).then(() => {
+      toast('Website link copied to clipboard!', 'success');
+    }).catch(() => {
+      toast('Failed to copy link', 'error');
+    });
+  }
+}
+
 // ==================== INIT ====================
 if(token && currentUser) { enterApp(); }

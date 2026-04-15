@@ -40,12 +40,14 @@ const marketRoutes = require('./routes/market');
 const tradeRoutes = require('./routes/trade');
 const portfolioRoutes = require('./routes/portfolio');
 const leaderboardRoutes = require('./routes/leaderboard');
+const paymentRoutes = require('./routes/payment');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/market', marketRoutes);
 app.use('/api/trade', tradeRoutes);
 app.use('/api/portfolio', portfolioRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
+app.use('/api/payment', paymentRoutes);
 
 app.get('/api/health', async (req, res) => {
   res.json({ 
