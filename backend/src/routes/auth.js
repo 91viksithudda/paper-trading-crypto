@@ -25,6 +25,7 @@ router.post('/signup', async (req, res) => {
       username: Joi.string().alphanum().min(3).max(20).required(),
       email: Joi.string().email().required(),
       password: Joi.string().min(6).required(),
+      referredBy: Joi.string().optional().allow(null, '')
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ error: error.details[0].message });
@@ -43,6 +44,9 @@ router.post('/signup', async (req, res) => {
       });
     }
 
+    // Generate a unique referral code
+    value.referralCode = value.username.substring(0, 3).toUpperCase() + Math.floor(1000 + Math.random() * 9000);
+
     const existingUser = await User.findOne({ $or: [{ email: value.email }, { username: value.username }] });
     if (existingUser) return res.status(409).json({ error: 'Email or username already exists' });
 
@@ -51,7 +55,7 @@ router.post('/signup', async (req, res) => {
     res.status(201).json({
       message: 'Account created successfully',
       token,
-      user: { id: user._id, username: user.username, email: user.email, cashBalance: user.cashBalance, portfolio: user.portfolio, createdAt: user.createdAt },
+      user: { id: user._id, username: user.username, email: user.email, cashBalance: user.cashBalance, portfolio: user.portfolio, createdAt: user.createdAt, referralCode: user.referralCode, referralEarnings: user.referralEarnings },
     });
   } catch (err) {
     console.error('Signup Error:', err);
@@ -97,7 +101,7 @@ router.post('/login', async (req, res) => {
     res.json({
       message: 'Login successful',
       token,
-      user: { id: user._id, username: user.username, email: user.email, cashBalance: user.cashBalance, portfolio: user.portfolio, createdAt: user.createdAt },
+      user: { id: user._id, username: user.username, email: user.email, cashBalance: user.cashBalance, portfolio: user.portfolio, createdAt: user.createdAt, referralCode: user.referralCode, referralEarnings: user.referralEarnings },
     });
   } catch (err) {
     console.error('Login Error:', err);

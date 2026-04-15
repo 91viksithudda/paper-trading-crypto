@@ -48,6 +48,7 @@ app.use('/api/trade', tradeRoutes);
 app.use('/api/portfolio', portfolioRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use('/api/referral', require('./routes/referral'));
 
 app.get('/api/health', async (req, res) => {
   res.json({ 

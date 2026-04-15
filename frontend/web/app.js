@@ -4,6 +4,10 @@ let currentUser = JSON.parse(localStorage.getItem('ag_user') || 'null');
 let marketData = [];
 let tradeState = { type:'BUY',coin:'',symbol:'',price:0 };
 
+const urlParams = new URLSearchParams(window.location.search);
+const refParam = urlParams.get('ref');
+if (refParam) localStorage.setItem('ag_referral', refParam);
+
 const COIN_COLORS = {BTC:'#f7931a',ETH:'#627eea',SOL:'#14f195',BNB:'#f3ba2f',XRP:'#00aae4',ADA:'#0033ad',DOGE:'#c2a633',AVAX:'#e84142',DOT:'#e6007a',MATIC:'#8247e5',LINK:'#2a5ada',LTC:'#bfbbbb',UNI:'#ff007a',ATOM:'#2e3148',XLM:'#08b5e5',ALGO:'#000',VET:'#15bdff',FTM:'#1969ff',NEAR:'#00c08b',SAND:'#04adef'};
 
 // ==================== AUTH ====================
@@ -48,8 +52,9 @@ document.getElementById('signup-form').addEventListener('submit', async(e)=>{
   const username=document.getElementById('signup-username').value;
   const email=document.getElementById('signup-email').value;
   const password=document.getElementById('signup-password').value;
+  const referredBy = localStorage.getItem('ag_referral') || undefined;
   try {
-    const r=await fetch(`${API}/auth/signup`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,email,password})});
+    const r=await fetch(`${API}/auth/signup`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,email,password,referredBy})});
     const text=await r.text();
     let d;
     try { d=JSON.parse(text); } catch(e) { d={error: 'Server returned non-JSON: ' + text.slice(0,100)}; }
@@ -175,6 +180,7 @@ function switchPage(page) {
   if(page==='trades') loadTrades();
   if(page==='leaderboard') loadLeaderboard();
   if(page==='ai') loadSuggestions();
+  if(page==='referral') loadReferrals();
 }
 
 // ==================== TOAST ====================
@@ -689,10 +695,13 @@ async function addFunds() {
 
 // ==================== SHARE TARGET ====================
 async function shareWebsite() {
+  let shareUrl = window.location.origin + window.location.pathname;
+  if (currentUser && currentUser.referralCode) shareUrl += '?ref=' + currentUser.referralCode;
+
   const shareData = {
     title: 'Paper Trading — Crypto Paper Trader',
-    text: 'Practice crypto trading risk-free with real-time Binance market data! Start with $10,000 virtual cash and join the leaderboard!',
-    url: window.location.href
+    text: 'Practice crypto trading risk-free! Sign up with my referral link to get started and we both earn rewards!',
+    url: shareUrl
   };
 
   if (navigator.share) {
@@ -704,12 +713,53 @@ async function shareWebsite() {
     }
   } else {
     // Fallback if Web Share API is not supported
-    navigator.clipboard.writeText(window.location.href).then(() => {
+    navigator.clipboard.writeText(shareUrl).then(() => {
       toast('Website link copied to clipboard!', 'success');
     }).catch(() => {
       toast('Failed to copy link', 'error');
     });
   }
+}
+
+// ==================== REFERRALS ====================
+async function loadReferrals() {
+  try {
+    const r = await fetch(`${API}/referral/stats`, { headers: authHeaders() });
+    const d = await r.json();
+    if (!r.ok) return;
+    
+    // Update UI Stats
+    document.getElementById('ref-code').textContent = d.referralCode || 'N/A';
+    document.getElementById('ref-earnings').textContent = '₹' + (d.referralEarnings || 0);
+    document.getElementById('ref-count').textContent = d.totalReferred || 0;
+
+    let linkUrl = window.location.origin + window.location.pathname + '?ref=' + d.referralCode;
+    document.getElementById('ref-link').value = linkUrl;
+
+    const body = document.getElementById('referral-history-body');
+    if (!d.earningsHistory || !d.earningsHistory.length) {
+      body.innerHTML = '<tr><td colspan="4" class="empty-state"><div class="empty-state-icon">👥</div><div class="empty-state-text">No referrals yet. Invite your friends!</div></td></tr>';
+      return;
+    }
+    
+    body.innerHTML = d.earningsHistory.map(h => {
+      return `<tr>
+        <td style="font-size:13px;color:var(--text-secondary)">${new Date(h.createdAt).toLocaleDateString()}</td>
+        <td><strong>${h.referredUserId ? h.referredUserId.username : 'Unknown'}</strong></td>
+        <td class="price-cell positive">+₹${h.commissionAmount}</td>
+        <td><span class="badge" style="background:var(--green-glow);color:var(--green)">${h.status.toUpperCase()}</span></td>
+      </tr>`;
+    }).join('');
+
+  } catch(err) { console.error('Referral Load Error:', err); }
+}
+
+function copyReferralLink() {
+  const linkUrl = document.getElementById('ref-link').value;
+  if (!linkUrl) return;
+  navigator.clipboard.writeText(linkUrl).then(() => {
+    toast('Referral link copied!', 'success');
+  }).catch(() => toast('Failed to copy', 'error'));
 }
 
 // ==================== INIT ====================

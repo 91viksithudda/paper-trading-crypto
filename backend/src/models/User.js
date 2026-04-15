@@ -58,6 +58,19 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  referralCode: {
+    type: String,
+    unique: true,
+    sparse: true,
+  },
+  referredBy: {
+    type: String,
+    default: null,
+  },
+  referralEarnings: {
+    type: Number,
+    default: 0,
+  },
 });
 
 // Hash password before saving

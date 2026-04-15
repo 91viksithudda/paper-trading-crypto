@@ -92,6 +92,7 @@
     <button class="nav-tab" onclick="switchPage('trades')" id="nav-trades">📋 Trades</button>
     <button class="nav-tab" onclick="switchPage('leaderboard')" id="nav-leaderboard">🏆 Leaderboard</button>
     <button class="nav-tab" onclick="switchPage('ai')" id="nav-ai">🤖 AI Signals</button>
+    <button class="nav-tab" onclick="switchPage('referral')" id="nav-referral">🎁 Refer & Earn</button>
   </div>
 
   <!-- Main Content -->
@@ -168,6 +169,51 @@
     <div id="page-ai" class="page">
       <h2 class="section-title">🤖 AI Trading Signals <span class="badge">Beta</span></h2>
       <div id="suggestions-list"></div>
+    </div>
+
+    <!-- ===== REFERRAL PAGE ===== -->
+    <div id="page-referral" class="page">
+      <div class="card" style="text-align:center; padding: 40px 20px;">
+        <h2 style="font-size: 28px; margin-bottom: 12px; background:var(--gradient-1); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">Invite Friends & Earn ₹25</h2>
+        <p style="color:var(--text-secondary); max-width:500px; margin:0 auto 24px;">Share your highly unique referral link below. When they sign up and make their first $1000 deposit, you instantly receive ₹25 direct to your wallet!</p>
+        
+        <div style="background:var(--bg-input); padding: 16px; border-radius: var(--radius-sm); border: 1px solid var(--border); display:inline-block; margin-bottom: 24px; text-align: left;">
+          <div style="font-size: 11px; color:var(--text-muted); text-transform:uppercase; font-weight: 700; margin-bottom: 6px;">Your Referral Link</div>
+          <div style="display:flex; gap:10px;">
+            <input type="text" id="ref-link" readonly style="background:transparent; border:none; color:var(--text-primary); font-family:monospace; font-size:14px; width: 300px; outline:none;">
+            <button onclick="copyReferralLink()" class="btn btn-sm" style="background:var(--gradient-1); color:#fff; border:none; border-radius:6px; padding:6px 12px; cursor:pointer;" title="Copy to clipboard">📋 Copy</button>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-value" id="ref-code" style="color:var(--accent-light);">--</div>
+            <div class="stat-label">Referral Code</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="ref-earnings" style="color:var(--green);">₹0</div>
+            <div class="stat-label">Total Earnings</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="ref-count" style="color:var(--cyan);">0</div>
+            <div class="stat-label">Friends Referred</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="card" style="margin-top:24px;">
+        <div class="card-header">
+          <h2 class="card-title">Referral Earnings History</h2>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="market-table">
+            <thead>
+              <tr><th>Date</th><th>Referred User</th><th>Commission</th><th>Status</th></tr>
+            </thead>
+            <tbody id="referral-history-body"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
 </div>
