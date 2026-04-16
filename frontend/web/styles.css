@@ -190,7 +190,15 @@ body::before {
 }
 
 .top-bar-user {
-  display:flex; align-items:center; gap:16px;
+  display:flex; align-items:center; gap:8px;
+  flex-shrink: 0;
+}
+@media (max-width: 480px) {
+  .top-bar { padding: 10px 12px; }
+  .top-bar-logo { font-size: 16px; }
+  .top-bar-user { gap: 6px; }
+  .top-bar-balance { padding: 4px 8px; font-size: 12px; }
+  .add-funds-btn span { display: none; } /* Hide text on very small screens */
 }
 
 .top-bar-balance {

@@ -736,7 +736,14 @@ async function loadReferrals() {
     document.getElementById('ref-earnings').textContent = '₹' + (d.referralEarnings || 0);
     document.getElementById('ref-count').textContent = d.totalReferred || 0;
 
-    let linkUrl = window.location.origin + window.location.pathname + '?ref=' + d.referralCode;
+    let refCode = d.referralCode || (currentUser ? currentUser.referralCode : null);
+    if (!refCode) {
+      document.getElementById('ref-link').value = 'Generating code...';
+      // If code is missing, maybe suggest the user to refresh or wait
+      return;
+    }
+
+    let linkUrl = window.location.origin + window.location.pathname + '?ref=' + refCode;
     document.getElementById('ref-link').value = linkUrl;
 
     const body = document.getElementById('referral-history-body');
