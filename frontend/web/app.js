@@ -10,7 +10,12 @@ const urlParams = new URLSearchParams(window.location.search);
 const refParam = urlParams.get('ref');
 if (refParam) {
   localStorage.setItem('ag_referral', refParam);
-  setTimeout(() => { if (typeof showSignup === 'function') showSignup(); }, 150);
+  // Give it a moment to ensure DOM is ready or function is defined
+  window.addEventListener('load', () => {
+    showSignup();
+    const refInput = document.getElementById('signup-referral');
+    if (refInput) refInput.value = refParam;
+  });
 }
 
 const COIN_COLORS = {BTC:'#f7931a',ETH:'#627eea',SOL:'#14f195',BNB:'#f3ba2f',XRP:'#00aae4',ADA:'#0033ad',DOGE:'#c2a633',AVAX:'#e84142',DOT:'#e6007a',MATIC:'#8247e5',LINK:'#2a5ada',LTC:'#bfbbbb',UNI:'#ff007a',ATOM:'#2e3148',XLM:'#08b5e5',ALGO:'#000',VET:'#15bdff',FTM:'#1969ff',NEAR:'#00c08b',SAND:'#04adef'};
@@ -27,6 +32,13 @@ function showSignup() {
   document.getElementById('login-form').style.display='none';
   document.getElementById('signup-form').style.display='block';
   document.getElementById('auth-error').style.display='none';
+  
+  // Auto-fill referral if we have it
+  const storedRef = localStorage.getItem('ag_referral');
+  const refInput = document.getElementById('signup-referral');
+  if (storedRef && refInput && !refInput.value) {
+    refInput.value = storedRef;
+  }
 }
 function showAuthError(msg) {
   const el=document.getElementById('auth-error');
@@ -59,7 +71,7 @@ document.getElementById('signup-form').addEventListener('submit', async(e)=>{
   const username=document.getElementById('signup-username').value;
   const email=document.getElementById('signup-email').value;
   const password=document.getElementById('signup-password').value;
-  const referredBy = localStorage.getItem('ag_referral') || undefined;
+  const referredBy = document.getElementById('signup-referral').value || localStorage.getItem('ag_referral') || undefined;
   try {
     const r=await fetch(`${API}/auth/signup`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,email,password,referredBy})});
     const text=await r.text();

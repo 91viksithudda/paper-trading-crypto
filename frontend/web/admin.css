@@ -352,18 +352,98 @@ label {
     to { opacity: 1; transform: scale(1); }
 }
 
-/* Scrollbar */
-::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+/* Responsive Media Queries */
+@media (max-width: 992px) {
+    .sidebar {
+        width: 80px;
+        padding: 1.5rem 0.5rem;
+    }
+    .sidebar-header span, .nav-links li span {
+        display: none;
+    }
+    .nav-links li {
+        justify-content: center;
+        padding: 1.2rem 0;
+    }
+    .nav-links li i {
+        margin: 0;
+        font-size: 1.4rem;
+    }
 }
-::-webkit-scrollbar-track {
-    background: var(--bg-main);
+
+@media (max-width: 768px) {
+    .admin-wrapper {
+        flex-direction: column;
+    }
+    .sidebar {
+        width: 100%;
+        height: auto;
+        flex-direction: row;
+        padding: 0.5rem 1rem;
+        position: fixed;
+        bottom: 0;
+        top: auto;
+        border-right: none;
+        border-top: 1px solid var(--glass-border);
+        justify-content: space-around;
+        box-shadow: 0 -5px 15px rgba(0,0,0,0.3);
+    }
+    .sidebar-header {
+        display: none;
+    }
+    .nav-links {
+        display: flex;
+        width: 100%;
+        justify-content: space-around;
+    }
+    .nav-links li {
+        border-left: none !important;
+        border-bottom: 2px solid transparent;
+        padding: 0.8rem 1rem;
+    }
+    .nav-links li.active {
+        border-bottom: 2px solid var(--primary);
+        background: transparent;
+    }
+    .main-content {
+        padding-bottom: 70px; /* Space for bottom bar */
+    }
+    .top-nav {
+        padding: 1rem 1.5rem;
+    }
+    .tab-content {
+        padding: 1.5rem 1rem;
+    }
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    .stat-card {
+        padding: 1rem;
+    }
+    .stat-info p {
+        font-size: 1.5rem;
+    }
 }
-::-webkit-scrollbar-thumb {
-    background: var(--glass-bg);
-    border-radius: 4px;
+
+@media (max-width: 480px) {
+    .top-nav h2 {
+        font-size: 1.1rem;
+    }
+    th, td {
+        padding: 0.8rem 0.5rem;
+        font-size: 0.85rem;
+    }
+    .btn-sm {
+        padding: 0.3rem 0.5rem;
+    }
 }
-::-webkit-scrollbar-thumb:hover {
-    background: var(--glass-border);
+
+/* Animations and transitions */
+.sidebar, .nav-links li, .glass-panel, .btn {
+    transition: var(--transition);
+}
+
+body {
+    overflow-y: auto;
 }

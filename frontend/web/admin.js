@@ -80,6 +80,7 @@ async function loadDashboardStats() {
         document.getElementById('totalUsers').textContent = data.userCount || 0;
         document.getElementById('totalTrades').textContent = data.tradeCount || 0;
         document.getElementById('totalTransactions').textContent = data.transactionCount || 0;
+        document.getElementById('totalReferralPayouts').textContent = data.referralEarningsCount || 0;
 
         // Render Recent Users
         const tbody = document.querySelector('#recentUsersTable tbody');
@@ -142,6 +143,7 @@ async function loadAllUsers() {
                     </td>
                     <td>${user.email}</td>
                     <td style="color: var(--success); font-weight: 500;">${formatCurrency(user.cashBalance)}</td>
+                    <td style="color: #f1c40f; font-weight: 500;">₹${user.referralEarnings || 0}</td>
                     <td>
                         <button class="btn btn-primary btn-sm" onclick="openEditModal('${user._id}', '${user.username}', ${user.cashBalance})">
                             <i class="fa-solid fa-pen"></i> Edit Balance
@@ -154,7 +156,7 @@ async function loadAllUsers() {
                 tbody.appendChild(tr);
             });
         } else {
-            tbody.innerHTML = `<tr><td colspan="4" style="text-align: center;">No users found.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center;">No users found.</td></tr>`;
         }
     } catch (err) {
         console.error("Error loading users:", err);
