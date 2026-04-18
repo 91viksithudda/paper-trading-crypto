@@ -1,4 +1,6 @@
-const API = '/api';
+const API = window.location.hostname.includes('localhost') || window.location.hostname.includes('127.0.0.1')
+  ? `http://${window.location.hostname}:5000/api`
+  : '/api'; // Use relative for production proxy/render/vercel
 let token = localStorage.getItem('ag_token');
 let currentUser = JSON.parse(localStorage.getItem('ag_user') || 'null');
 let marketData = [];
@@ -12,6 +14,8 @@ if (refParam) {
 }
 
 const COIN_COLORS = {BTC:'#f7931a',ETH:'#627eea',SOL:'#14f195',BNB:'#f3ba2f',XRP:'#00aae4',ADA:'#0033ad',DOGE:'#c2a633',AVAX:'#e84142',DOT:'#e6007a',MATIC:'#8247e5',LINK:'#2a5ada',LTC:'#bfbbbb',UNI:'#ff007a',ATOM:'#2e3148',XLM:'#08b5e5',ALGO:'#000',VET:'#15bdff',FTM:'#1969ff',NEAR:'#00c08b',SAND:'#04adef'};
+let marketMode = 'SPOT'; // 'SPOT' or 'FUTURES'
+let closingState = { coin: '', symbol: '', quantity: 0, type: 'MARKET', limitPrice: 0 };
 
 // ==================== AUTH ====================
 function showLogin() {
@@ -82,12 +86,28 @@ function logout() {
 }
 
 // ==================== APP ENTRY ====================
-function enterApp() {
+async function enterApp() {
   document.getElementById('auth-screen').style.display='none';
   document.getElementById('app').classList.add('active');
   document.getElementById('top-avatar').textContent=(currentUser.username||'U')[0].toUpperCase();
+  document.getElementById('user-email-display').textContent = currentUser.email;
+
+  // Refresh user data from server to get latest role
+  try {
+    const r = await fetch(`${API}/auth/me`, { headers: authHeaders() });
+    if (r.ok) {
+      const d = await r.json();
+      currentUser = d.user;
+      localStorage.setItem('ag_user', JSON.stringify(currentUser));
+    }
+  } catch (e) { console.error('Failed to refresh user profile:', e); }
   
-  // Clear any leftover data in global variables
+  // Show/Hide Admin Button based on role
+  const adminBtn = document.getElementById('header-admin-btn');
+  if (adminBtn) {
+    adminBtn.style.display = (currentUser && currentUser.role === 'admin') ? 'flex' : 'none';
+  }
+  
   marketData = [];
   
   // Initial loads
@@ -97,18 +117,50 @@ function enterApp() {
   setInterval(loadMarket,15000);
 }
 
-// ==================== CLOSE TRADE ====================
-async function closePosition(coin, symbol, quantity) {
-  const targetPrice = prompt(`Enter price to close ${coin} (leave empty to close at Market Price):`);
+// ==================== CLOSE POSITION MODAL LOGIC ====================
+function openCloseModal(coin, symbol, quantity) {
+  closingState = { coin, symbol, quantity, type: 'MARKET', limitPrice: 0 };
+  document.getElementById('close-coin-name').textContent = coin;
+  document.getElementById('close-market-price-display').textContent = 'Loading...';
   
-  // If user cancelled the prompt
-  if (targetPrice === null) return;
+  // Fetch current price for display
+  const coinData = marketData.find(c => c.coin === coin);
+  if (coinData) {
+    document.getElementById('close-market-price-display').textContent = fmt(coinData.price);
+    closingState.limitPrice = coinData.price;
+  }
 
-  // Case 1: Limit Close (User specified a price)
-  if (targetPrice.trim() !== '') {
-    const price = parseFloat(targetPrice);
-    if (isNaN(price)) return toast('Invalid price entered', 'error');
+  setCloseType('MARKET');
+  document.getElementById('close-modal').classList.add('active');
+}
+
+function closeCloseModal() {
+  document.getElementById('close-modal').classList.remove('active');
+}
+
+function setCloseType(type) {
+  closingState.type = type;
+  document.getElementById('close-market-btn').classList.toggle('active', type === 'MARKET');
+  document.getElementById('close-limit-btn').classList.toggle('active', type === 'LIMIT');
+  document.getElementById('limit-price-group').style.display = type === 'LIMIT' ? 'block' : 'none';
+}
+
+function setAutoPrice() {
+  const coinData = marketData.find(c => c.coin === closingState.coin);
+  if (coinData) {
+    document.getElementById('close-limit-price').value = coinData.price;
+  }
+}
+
+async function confirmClosePosition() {
+  const { coin, symbol, quantity, type } = closingState;
+  const btn = document.getElementById('confirm-close-btn');
+  
+  if (type === 'LIMIT') {
+    const price = parseFloat(document.getElementById('close-limit-price').value);
+    if (!price || price <= 0) return toast('Invalid target price', 'error');
     
+    btn.textContent = 'Processing...';
     try {
       const r = await fetch(`${API}/portfolio/set-exit-price`, {
         method: 'POST',
@@ -118,16 +170,15 @@ async function closePosition(coin, symbol, quantity) {
       const d = await r.json();
       if (!r.ok) return toast(d.error || 'Failed to set exit price', 'error');
       toast(d.message, 'success');
+      closeCloseModal();
       loadPortfolio();
-      return;
-    } catch (err) {
-      return toast('Connection error', 'error');
-    }
+    } catch (err) { toast('Connection error', 'error'); }
+    finally { btn.textContent = 'Confirm Close'; }
+    return;
   }
 
-  // Case 2: Market Close (User left price empty)
-  if(!confirm(`Are you sure you want to close your ${coin} position at Market Price?`)) return;
-  
+  // Market Close
+  btn.textContent = 'Closing...';
   try {
     const r = await fetch(`${API}/trade/execute`, {
       method: 'POST',
@@ -136,20 +187,18 @@ async function closePosition(coin, symbol, quantity) {
         type: 'SELL',
         symbol: symbol,
         coin: coin,
-        quantityInCoin: quantity // Added quantity to fix validation error
+        quantityInCoin: quantity
       })
     });
-    
     const d = await r.json();
-    if(!r.ok) return toast(d.error || 'Failed to close position', 'error');
+    if(!r.ok) return toast(d.error || 'Failed to close', 'error');
     
-    toast(d.message || 'Position closed successfully', 'success');
+    toast(d.message || 'Position closed', 'success');
     if(d.cashBalance != null) { currentUser.cashBalance = d.cashBalance; updateBalance(); }
+    closeCloseModal();
     loadPortfolio();
-  } catch(err) {
-    console.error('Close error:', err);
-    toast('Connection error while closing position', 'error');
-  }
+  } catch(err) { toast('Connection error', 'error'); }
+  finally { btn.textContent = 'Confirm Close'; }
 }
 
 // ==================== CANCEL EXIT ORDER ====================
@@ -270,8 +319,8 @@ function renderMarket() {
       <td class="price-cell" style="color:var(--text-secondary)">${fmt(c.high24h)}</td>
       <td class="price-cell" style="color:var(--text-secondary)">${fmt(c.low24h)}</td>
       <td>
-        <button class="trade-btn-sm buy" onclick="event.stopPropagation();openTradeModal('${c.coin}','${c.symbol}',${c.price},'LONG')">Buy</button>
-        <button class="trade-btn-sm sell" onclick="event.stopPropagation();openTradeModal('${c.coin}','${c.symbol}',${c.price},'SHORT')">Sell</button>
+        <button class="trade-btn-sm buy" onclick="event.stopPropagation();openTradeModal('${c.coin}','${c.symbol}',${c.price},'LONG')">${marketMode==='SPOT'?'Buy':'Long'}</button>
+        ${marketMode==='FUTURES' ? `<button class="trade-btn-sm sell" onclick="event.stopPropagation();openTradeModal('${c.coin}','${c.symbol}',${c.price},'SHORT')">Short</button>` : ''}
       </td>
     </tr>`;
   }).join('');
@@ -283,8 +332,24 @@ let tradeInterval = null;
 
 function openTradeModal(coin,symbol,price,type) {
   tradeState={type:type||'LONG',coin,symbol,price};
-  document.getElementById('modal-coin-name').textContent='Trade '+coin;
+  document.getElementById('modal-coin-name').textContent=(marketMode === 'SPOT' ? 'Exchange ' : 'Future ') + coin;
   document.getElementById('modal-live-price').textContent=fmt(price);
+  
+  // Update Leverage UI based on Mode
+  const leverageSlider = document.getElementById('leverage-slider');
+  const leverageSection = document.querySelector('.leverage-section');
+  const typeToggle = document.querySelector('.trade-type-toggle');
+  
+  if (marketMode === 'SPOT') {
+    updateLeverage(1);
+    leverageSection.style.display = 'none';
+    typeToggle.style.display = 'none';
+    tradeState.type = 'LONG';
+  } else {
+    leverageSection.style.display = 'block';
+    typeToggle.style.display = 'flex';
+  }
+  
   document.getElementById('trade-amount').value='';
   setTradeType(tradeState.type);
   updateModalBalance();
@@ -530,7 +595,7 @@ function renderHoldings(holdings) {
           <div class="holding-value">${fmt(h.currentValue)}</div>
           <div class="holding-pnl ${up?'positive':'negative'}">${up?'+':''}${fmt(h.pnl)} (${h.pnlPercent}%)</div>
         </div>
-        <button class="trade-btn-sm sell" onclick="closePosition('${h.coin}','${h.symbol}',${h.quantity})" style="background:var(--red); color:#fff; border-radius:4px; padding:8px 12px; font-weight:700;">CLOSE</button>
+        <button class="trade-btn-sm sell" onclick="openCloseModal('${h.coin}','${h.symbol}',${h.quantity})" style="background:var(--red); color:#fff; border-radius:4px; padding:8px 12px; font-weight:700;">CLOSE</button>
       </div>
     </div>`;
   }).join('');
@@ -791,6 +856,34 @@ async function customizeReferralCode() {
   } catch(err) {
     toast('Connection error', 'error');
   }
+}
+
+// ==================== MARKET MODE ====================
+function setMarketMode(mode) {
+  marketMode = mode;
+  document.getElementById('mode-spot').classList.toggle('active', mode === 'SPOT');
+  document.getElementById('mode-futures').classList.toggle('active', mode === 'FUTURES');
+  renderMarket();
+}
+
+// ==================== PROFILE ====================
+function toggleProfileDropdown() {
+  const el = document.getElementById('profile-dropdown');
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+// Close dropdown on click outside
+window.addEventListener('click', (e) => {
+  if (!e.target.closest('.top-bar-avatar-container')) {
+    document.getElementById('profile-dropdown').style.display = 'none';
+  }
+});
+
+function addAccount() {
+  document.getElementById('profile-dropdown').style.display = 'none';
+  document.getElementById('app').classList.remove('active');
+  document.getElementById('auth-screen').style.display = 'flex';
+  showSignup();
 }
 
 // ==================== INIT ====================

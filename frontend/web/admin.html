@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Paper Trading</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+    <div class="admin-wrapper">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <i class="fa-solid fa-chart-line logo-icon"></i>
+                <h2>Admin</h2>
+            </div>
+            <ul class="nav-links">
+                <li class="active" data-tab="dashboard"><i class="fa-solid fa-house"></i> Dashboard</li>
+                <li data-tab="users"><i class="fa-solid fa-users"></i> Users Management</li>
+            </ul>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-nav">
+                <h1>Dashboard Overview</h1>
+                <div class="user-profile">
+                    <span>Admin</span>
+                    <i class="fa-solid fa-user-circle"></i>
+                </div>
+            </header>
+
+            <section id="dashboard" class="tab-content active">
+                <div class="stats-grid">
+                    <div class="stat-card glass-panel">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #FF6B6B, #EE5D5D);"><i class="fa-solid fa-users"></i></div>
+                        <div class="stat-info">
+                            <h3>Total Users</h3>
+                            <p id="totalUsers">0</p>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-panel">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #4D96FF, #2979FF);"><i class="fa-solid fa-exchange-alt"></i></div>
+                        <div class="stat-info">
+                            <h3>Total Trades</h3>
+                            <p id="totalTrades">0</p>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-panel">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #6BCB77, #4CAF50);"><i class="fa-solid fa-money-bill-wave"></i></div>
+                        <div class="stat-info">
+                            <h3>Transactions</h3>
+                            <p id="totalTransactions">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="recent-section mt-4 glass-panel">
+                    <h2>Recent Users</h2>
+                    <div class="table-responsive">
+                        <table id="recentUsersTable">
+                            <thead>
+                                <tr>
+                                    <th>Username</th>
+                                    <th>Email</th>
+                                    <th>Joined</th>
+                                    <th>Balance</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Loaded dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section id="users" class="tab-content">
+                <div class="glass-panel">
+                    <div class="flex-between">
+                        <h2>Manage Users</h2>
+                        <button class="btn btn-primary" onclick="loadAllUsers()"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
+                    </div>
+                    <div class="table-responsive mt-3">
+                        <table id="allUsersTable">
+                            <thead>
+                                <tr>
+                                    <th>Username</th>
+                                    <th>Email</th>
+                                    <th>Cash Balance</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Loaded dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Edit Balance Modal -->
+    <div id="editBalanceModal" class="modal">
+        <div class="modal-content glass-panel">
+            <span class="close-modal">&times;</span>
+            <h2 class="mb-3">Edit User Balance</h2>
+            <div class="form-group">
+                <label>Username: <span id="editUsername" class="text-highlight"></span></label>
+            </div>
+            <div class="form-group">
+                <label for="newBalance">New Balance ($)</label>
+                <input type="number" id="newBalance" class="form-control">
+            </div>
+            <input type="hidden" id="editUserId">
+            <button class="btn btn-primary w-100" id="saveBalanceBtn">Save Changes</button>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>

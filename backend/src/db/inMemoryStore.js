@@ -21,6 +21,7 @@ const createUser = async ({ username, email, password }) => {
     totalDeposited: 10000,
     dailyRewardClaimed: null,
     createdAt: new Date(),
+    role: 'user',
   };
   users.push(user);
   return user;

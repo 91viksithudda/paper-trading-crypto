@@ -1,0 +1,8 @@
+{
+  "appId": "com.papertrading.app",
+  "appName": "Paper Trading",
+  "webDir": "frontend/web",
+  "server": {
+    "cleartext": true
+  }
+}

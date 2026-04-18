@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Paper Trading</string>
+    <string name="title_activity_main">Paper Trading</string>
+    <string name="package_name">com.papertrading.app</string>
+    <string name="custom_url_scheme">com.papertrading.app</string>
+</resources>

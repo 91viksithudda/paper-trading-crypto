@@ -573,6 +573,33 @@ body::before {
   .market-table td:nth-child(4),
   .market-table th:nth-child(5),
   .market-table td:nth-child(5) { display:none; }
+  
+  /* Mobile Header Optimization */
+  .top-bar { padding: 8px 12px; gap: 8px; }
+  .top-bar-logo { display: none; } 
+  .add-funds-btn span { display: none; }
+  .add-funds-btn { padding: 8px; border-radius: 50%; width: 34px; height: 34px; justify-content: center; }
+  .top-bar-balance { font-size: 11px; padding: 4px 8px; }
+  .top-bar-balance svg { width: 14px; height: 14px; }
+  
+  /* Mobile Portfolio Fix */
+  .holding-card {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .holding-right {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px dashed var(--border);
+    padding-top: 12px;
+    text-align: left;
+  }
+  .holding-right .trade-btn-sm {
+    padding: 10px 20px;
+    font-size: 14px;
+  }
 }
 
 .trade-btn-sm {
@@ -796,8 +823,41 @@ body::before {
 }
 .btn-icon:hover { border-color: var(--accent); background: var(--accent); }
 
-/* Fullscreen support */
-.trading-chart-container:fullscreen {
+/* Profile Dropdown */
+.dropdown-item {
+  width: 100%; text-align: left; padding: 10px; background: transparent; border: none;
+  color: var(--text-primary); font-size: 14px; font-weight: 500; cursor: pointer;
+  border-radius: 6px; transition: var(--transition); display: flex; align-items: center; gap: 8px;
+}
+.dropdown-item:hover { background: rgba(255,255,255,0.05); }
+
+/* Trade Modes */
+.trade-mode-toggle {
+  display: flex; background: var(--bg-input); border-radius: 30px; padding: 3px; gap: 4px;
+}
+.mode-btn {
+  padding: 6px 16px; border: none; border-radius: 20px; font-size: 13px; font-weight: 700;
+  cursor: pointer; transition: var(--transition); background: transparent; color: var(--text-muted);
+}
+.mode-btn.active { background: var(--accent); color: #fff; box-shadow: 0 2px 8px var(--accent-glow); }
+
+/* Custom Scroll Fixes */
+.market-table-container { 
+  max-height: 500px; overflow-y: auto; scroll-behavior: smooth;
+}
+
+@media (max-width: 768px) {
+  .market-table-container { max-height: calc(100vh - 350px); }
+  .stats-grid { gap: 8px; margin-bottom: 12px; }
+  .stat-card { padding: 12px; }
+  .stat-value { font-size: 16px; }
+  
+  /* Make portfolio sections sticky-header style if needed */
+  .section-title { position: sticky; top: 0; background: var(--bg-primary); z-index: 5; padding: 10px 0; }
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
   background: var(--bg-primary); padding: 10px;
   width: 100vw; height: 100vh; display: flex; flex-direction: column;
 }

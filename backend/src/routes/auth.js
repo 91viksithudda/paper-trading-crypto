@@ -40,7 +40,7 @@ router.post('/signup', async (req, res) => {
       return res.status(201).json({
         message: 'Account created successfully (Memory Mode)',
         token,
-        user: { id: user._id, username: user.username, email: user.email, cashBalance: user.cashBalance, portfolio: user.portfolio, createdAt: user.createdAt },
+        user: { id: user._id, username: user.username, email: user.email, cashBalance: user.cashBalance, portfolio: user.portfolio, createdAt: user.createdAt, role: user.role },
       });
     }
 
@@ -55,7 +55,7 @@ router.post('/signup', async (req, res) => {
     res.status(201).json({
       message: 'Account created successfully',
       token,
-      user: { id: user._id, username: user.username, email: user.email, cashBalance: user.cashBalance, portfolio: user.portfolio, createdAt: user.createdAt, referralCode: user.referralCode, referralEarnings: user.referralEarnings },
+      user: { id: user._id, username: user.username, email: user.email, cashBalance: user.cashBalance, portfolio: user.portfolio, createdAt: user.createdAt, referralCode: user.referralCode, referralEarnings: user.referralEarnings, role: user.role },
     });
   } catch (err) {
     console.error('Signup Error:', err);
@@ -83,7 +83,7 @@ router.post('/login', async (req, res) => {
       return res.json({
         message: 'Login successful (Memory Mode)',
         token,
-        user: { id: user._id, username: user.username, email: user.email, cashBalance: user.cashBalance, portfolio: user.portfolio, createdAt: user.createdAt },
+        user: { id: user._id, username: user.username, email: user.email, cashBalance: user.cashBalance, portfolio: user.portfolio, createdAt: user.createdAt, role: user.role },
       });
     }
 
@@ -101,7 +101,7 @@ router.post('/login', async (req, res) => {
     res.json({
       message: 'Login successful',
       token,
-      user: { id: user._id, username: user.username, email: user.email, cashBalance: user.cashBalance, portfolio: user.portfolio, createdAt: user.createdAt, referralCode: user.referralCode, referralEarnings: user.referralEarnings },
+      user: { id: user._id, username: user.username, email: user.email, cashBalance: user.cashBalance, portfolio: user.portfolio, createdAt: user.createdAt, referralCode: user.referralCode, referralEarnings: user.referralEarnings, role: user.role },
     });
   } catch (err) {
     console.error('Login Error:', err);
