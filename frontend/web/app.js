@@ -933,10 +933,11 @@ function addAccount() {
 }
 
 // ==================== INIT ====================
-if (token && currentUser) {
-  enterApp();
-} else if (refParam) {
+if (refParam) {
+  // If referral link, show signup first so new user can register
   showSignup();
+} else if (token && currentUser) {
+  enterApp();
 } else {
   showLogin();
 }
