@@ -10,12 +10,6 @@ const urlParams = new URLSearchParams(window.location.search);
 const refParam = urlParams.get('ref');
 if (refParam) {
   localStorage.setItem('ag_referral', refParam);
-  // Give it a moment to ensure DOM is ready or function is defined
-  window.addEventListener('load', () => {
-    showSignup();
-    const refInput = document.getElementById('signup-referral');
-    if (refInput) refInput.value = refParam;
-  });
 }
 
 const COIN_COLORS = {BTC:'#f7931a',ETH:'#627eea',SOL:'#14f195',BNB:'#f3ba2f',XRP:'#00aae4',ADA:'#0033ad',DOGE:'#c2a633',AVAX:'#e84142',DOT:'#e6007a',MATIC:'#8247e5',LINK:'#2a5ada',LTC:'#bfbbbb',UNI:'#ff007a',ATOM:'#2e3148',XLM:'#08b5e5',ALGO:'#000',VET:'#15bdff',FTM:'#1969ff',NEAR:'#00c08b',SAND:'#04adef'};
@@ -30,6 +24,8 @@ function showLogin() {
   document.getElementById('auth-error').style.display='none';
 }
 function showSignup() {
+  document.getElementById('auth-screen').style.display='flex';
+  document.getElementById('app').classList.remove('active');
   document.getElementById('login-form').style.display='none';
   document.getElementById('signup-form').style.display='block';
   document.getElementById('forgot-form').style.display='none';
@@ -38,7 +34,7 @@ function showSignup() {
   // Auto-fill referral if we have it
   const storedRef = localStorage.getItem('ag_referral');
   const refInput = document.getElementById('signup-referral');
-  if (storedRef && refInput && !refInput.value) {
+  if (storedRef && refInput) {
     refInput.value = storedRef;
   }
 }
@@ -937,4 +933,10 @@ function addAccount() {
 }
 
 // ==================== INIT ====================
-if(token && currentUser) { enterApp(); }
+if (token && currentUser) {
+  enterApp();
+} else if (refParam) {
+  showSignup();
+} else {
+  showLogin();
+}
