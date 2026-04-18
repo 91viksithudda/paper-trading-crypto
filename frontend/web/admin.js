@@ -31,20 +31,22 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Modal Logic
-    const modal = document.getElementById('editBalanceModal');
-    const closeBtn = document.querySelector('.close-modal');
+    const closeModals = () => {
+        document.querySelectorAll('.modal').forEach(m => m.classList.remove('show'));
+    };
     
-    closeBtn.addEventListener('click', () => {
-        modal.classList.remove('show');
+    document.querySelectorAll('.close-modal').forEach(btn => {
+        btn.addEventListener('click', closeModals);
     });
 
     window.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            modal.classList.remove('show');
+        if (e.target.classList.contains('modal')) {
+            closeModals();
         }
     });
 
     document.getElementById('saveBalanceBtn').addEventListener('click', saveNewBalance);
+    document.getElementById('confirmResetBtn').addEventListener('click', resetUserPassword);
 
     // Initial load
     loadDashboardStats();
@@ -146,7 +148,10 @@ async function loadAllUsers() {
                     <td style="color: #f1c40f; font-weight: 500;">₹${user.referralEarnings || 0}</td>
                     <td>
                         <button class="btn btn-primary btn-sm" onclick="openEditModal('${user._id}', '${user.username}', ${user.cashBalance})">
-                            <i class="fa-solid fa-pen"></i> Edit Balance
+                            <i class="fa-solid fa-pen"></i> Balance
+                        </button>
+                        <button class="btn btn-primary btn-sm ml-2" style="background:#f39c12" onclick="openResetModal('${user._id}', '${user.username}')">
+                            <i class="fa-solid fa-key"></i> Key
                         </button>
                         <button class="btn btn-danger btn-sm ml-2" onclick="deleteUser('${user._id}', '${user.username}')">
                             <i class="fa-solid fa-trash"></i>

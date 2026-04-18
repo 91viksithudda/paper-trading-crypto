@@ -60,6 +60,31 @@ router.post('/users/:id/balance', async (req, res) => {
     }
 });
 
+// Reset user password
+router.post('/users/:id/reset-password', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { newPassword } = req.body;
+        
+        if (!newPassword || newPassword.length < 6) {
+            return res.status(400).json({ error: 'Password must be at least 6 characters' });
+        }
+
+        const user = await User.findById(id);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // The pre-save hook in the User model will hash this password automatically
+        user.password = newPassword;
+        await user.save();
+
+        res.json({ message: 'Password reset successfully' });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to reset password: ' + err.message });
+    }
+});
+
 // Delete a user
 router.delete('/users/:id', async (req, res) => {
     try {

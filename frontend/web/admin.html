@@ -126,6 +126,23 @@
         </div>
     </div>
 
+    <!-- Reset Password Modal -->
+    <div id="resetPasswordModal" class="modal">
+        <div class="modal-content glass-panel">
+            <span class="close-modal">&times;</span>
+            <h2 class="mb-3">Reset User Password</h2>
+            <div class="form-group">
+                <label>Resetting for: <span id="resetUsername" class="text-highlight"></span></label>
+            </div>
+            <div class="form-group">
+                <label for="newPassword">New Temporary Password</label>
+                <input type="text" id="newPassword" class="form-control" placeholder="Enter new password">
+            </div>
+            <input type="hidden" id="resetUserId">
+            <button class="btn btn-primary w-100" id="confirmResetBtn">Reset Password</button>
+        </div>
+    </div>
+
     <script src="admin.js"></script>
 </body>
 </html>
