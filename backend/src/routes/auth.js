@@ -137,8 +137,7 @@ router.post('/daily-reward', require('../middleware/auth').protect, async (req, 
       return res.json({ message: `🎉 Daily reward of $${reward} credited!`, cashBalance: user.cashBalance, reward });
     }
 
-    const User = getMongoUser();
-    const user = await User.findById(req.user._id);
+    const user = await User.findById(req.user._id || req.user.id);
     const now = new Date();
     const lastClaim = user.dailyRewardClaimed;
     if (lastClaim) {
