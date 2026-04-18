@@ -26,11 +26,13 @@ let closingState = { coin: '', symbol: '', quantity: 0, type: 'MARKET', limitPri
 function showLogin() {
   document.getElementById('login-form').style.display='block';
   document.getElementById('signup-form').style.display='none';
+  document.getElementById('forgot-form').style.display='none';
   document.getElementById('auth-error').style.display='none';
 }
 function showSignup() {
   document.getElementById('login-form').style.display='none';
   document.getElementById('signup-form').style.display='block';
+  document.getElementById('forgot-form').style.display='none';
   document.getElementById('auth-error').style.display='none';
   
   // Auto-fill referral if we have it
@@ -39,6 +41,12 @@ function showSignup() {
   if (storedRef && refInput && !refInput.value) {
     refInput.value = storedRef;
   }
+}
+function showForgot() {
+  document.getElementById('login-form').style.display='none';
+  document.getElementById('signup-form').style.display='none';
+  document.getElementById('forgot-form').style.display='block';
+  document.getElementById('auth-error').style.display='none';
 }
 function showAuthError(msg) {
   const el=document.getElementById('auth-error');
@@ -63,6 +71,36 @@ document.getElementById('login-form').addEventListener('submit', async(e)=>{
   } catch(err) { 
     console.error('Login error:', err);
     showAuthError('Connection error: ' + err.message); 
+  }
+});
+
+document.getElementById('forgot-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = document.getElementById('forgot-email').value;
+  try {
+    const btn = document.getElementById('forgot-btn');
+    btn.textContent = 'Sending...';
+    btn.disabled = true;
+
+    const r = await fetch(`${API}/auth/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+
+    const d = await r.json();
+    if (r.ok) {
+      alert('Reset link sent to your email!');
+      showLogin();
+    } else {
+      showAuthError(d.error || 'Failed to send reset link');
+    }
+    btn.textContent = 'Send Reset Link';
+    btn.disabled = false;
+  } catch (err) {
+    console.error('Forgot password error:', err);
+    showAuthError('Connection error');
+    document.getElementById('forgot-btn').disabled = false;
   }
 });
 
