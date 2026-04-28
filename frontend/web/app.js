@@ -1,6 +1,8 @@
-const API = window.location.hostname.includes('localhost') || window.location.hostname.includes('127.0.0.1')
+const API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
   ? `http://${window.location.hostname}:5000/api`
-  : '/api'; // Use relative for production proxy/render/vercel
+  : (window.location.protocol === 'http:' || window.location.protocol === 'https:') 
+    ? '/api' 
+    : 'https://paper-trading-crypto.onrender.com/api'; // Fallback for Mobile APK
 let token = localStorage.getItem('ag_token');
 let currentUser = JSON.parse(localStorage.getItem('ag_user') || 'null');
 let marketData = [];
@@ -592,8 +594,67 @@ async function loadPortfolio() {
       updateBalance();
       renderPortfolioStats(p,s);
       renderHoldings(p.holdings||[]);
+      
+      // Check Milestone
+      checkMilestoneReward(p.totalPortfolioValue || p.cashBalance);
     }
   } catch(err) { console.error(err); }
+}
+
+// ==================== MILESTONE REWARD ====================
+function checkMilestoneReward(totalEquity) {
+  const btn = document.getElementById('milestone-reward-btn');
+  if (!btn) return;
+  if (!currentUser.milestoneRewardClaimed && totalEquity >= 12000) {
+    btn.style.display = 'flex'; 
+    btn.style.alignItems = 'center';
+    btn.style.justifyContent = 'center';
+  } else {
+    btn.style.display = 'none';
+  }
+}
+
+function showMilestoneReward() {
+  document.getElementById('milestone-modal').classList.add('active');
+}
+
+function closeMilestoneModal() {
+  document.getElementById('milestone-modal').classList.remove('active');
+}
+
+async function submitMilestoneClaim() {
+  const details = document.getElementById('milestone-payment-details').value;
+  if (!details || details.trim().length < 5) return toast('Please provide valid payment details.', 'error');
+  
+  const btn = document.getElementById('submit-milestone-btn');
+  btn.textContent = 'Processing...';
+  btn.disabled = true;
+  
+  try {
+    const r = await fetch(`${API}/reward/claim`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ paymentDetails: details })
+    });
+    const d = await r.json();
+    if (!r.ok) {
+      toast(d.error || 'Failed to submit claim', 'error');
+    } else {
+      toast(d.message, 'success');
+      if (currentUser) {
+        currentUser.milestoneRewardClaimed = true;
+        localStorage.setItem('ag_user', JSON.stringify(currentUser));
+      }
+      closeMilestoneModal();
+      document.getElementById('milestone-reward-btn').style.display = 'none';
+      document.getElementById('milestone-payment-details').value = '';
+    }
+  } catch(err) {
+    toast('Connection error', 'error');
+  } finally {
+    btn.textContent = 'Submit for Processing';
+    btn.disabled = false;
+  }
 }
 
 function renderPortfolioStats(p,s) {

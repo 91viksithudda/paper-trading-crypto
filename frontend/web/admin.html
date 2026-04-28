@@ -18,6 +18,7 @@
             <ul class="nav-links">
                 <li class="active" data-tab="dashboard"><i class="fa-solid fa-house"></i> Dashboard</li>
                 <li data-tab="users"><i class="fa-solid fa-users"></i> Users Management</li>
+                <li data-tab="claims"><i class="fa-solid fa-gift"></i> Reward Claims</li>
             </ul>
         </aside>
 
@@ -96,6 +97,32 @@
                                     <th>Email</th>
                                     <th>Cash Balance</th>
                                     <th>Earnings ($)</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Loaded dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section id="claims" class="tab-content">
+                <div class="glass-panel">
+                    <div class="flex-between">
+                        <h2>$12k Milestone Claims</h2>
+                        <button class="btn btn-primary" onclick="loadAllClaims()"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
+                    </div>
+                    <div class="table-responsive mt-3">
+                        <table id="allClaimsTable">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Username</th>
+                                    <th>Payment Details</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>

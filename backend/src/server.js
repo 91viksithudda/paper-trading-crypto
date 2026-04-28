@@ -42,6 +42,7 @@ const portfolioRoutes = require('./routes/portfolio');
 const leaderboardRoutes = require('./routes/leaderboard');
 const paymentRoutes = require('./routes/payment');
 const adminRoutes = require('./routes/admin');
+const rewardRoutes = require('./routes/reward');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/market', marketRoutes);
@@ -50,6 +51,7 @@ app.use('/api/portfolio', portfolioRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/referral', require('./routes/referral'));
+app.use('/api/reward', rewardRoutes);
 app.use('/api/admin', adminRoutes);
 
 app.get('/api/health', async (req, res) => {

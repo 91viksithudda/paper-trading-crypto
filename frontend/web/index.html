@@ -114,12 +114,12 @@
 
   <!-- Navigation -->
   <div class="nav-tabs">
-    <button class="nav-tab active" onclick="switchPage('market')" id="nav-market">📊 Market</button>
-    <button class="nav-tab" onclick="switchPage('portfolio')" id="nav-portfolio">💼 Portfolio</button>
-    <button class="nav-tab" onclick="switchPage('trades')" id="nav-trades">📋 Trades</button>
-    <button class="nav-tab" onclick="switchPage('leaderboard')" id="nav-leaderboard">🏆 Leaderboard</button>
-    <button class="nav-tab" onclick="switchPage('ai')" id="nav-ai">🤖 AI Signals</button>
-    <button class="nav-tab" onclick="switchPage('referral')" id="nav-referral">🎁 Refer & Earn</button>
+    <button class="nav-tab active" onclick="switchPage('market')" id="nav-market"><span class="nav-icon">📊</span><span class="nav-text">Market</span></button>
+    <button class="nav-tab" onclick="switchPage('portfolio')" id="nav-portfolio"><span class="nav-icon">💼</span><span class="nav-text">Portfolio</span></button>
+    <button class="nav-tab" onclick="switchPage('trades')" id="nav-trades"><span class="nav-icon">📋</span><span class="nav-text">Trades</span></button>
+    <button class="nav-tab" onclick="switchPage('leaderboard')" id="nav-leaderboard"><span class="nav-icon">🏆</span><span class="nav-text">Leaderboard</span></button>
+    <button class="nav-tab" onclick="switchPage('ai')" id="nav-ai"><span class="nav-icon">🤖</span><span class="nav-text">AI Signals</span></button>
+    <button class="nav-tab" onclick="switchPage('referral')" id="nav-referral"><span class="nav-icon">🎁</span><span class="nav-text">Refer & Earn</span></button>
   </div>
 
   <!-- Main Content -->
@@ -383,6 +383,30 @@
 
 <!-- Daily Reward Button -->
 <button class="daily-reward-btn" onclick="claimDailyReward()" title="Claim Daily Reward">🎁</button>
+
+<!-- Milestone Reward Button -->
+<button id="milestone-reward-btn" class="daily-reward-btn" onclick="showMilestoneReward()" title="Claim $10 Real Money Reward!" style="display: none; bottom: 80px; background: linear-gradient(135deg, #f1c40f, #f39c12); box-shadow: 0 0 15px #f39c12;">💸</button>
+
+<!-- Milestone Reward Modal -->
+<div id="milestone-modal" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" style="color: #f1c40f;">🎉 Congratulations!</div>
+      <button class="modal-close" onclick="closeMilestoneModal()">&times;</button>
+    </div>
+    <div style="text-align: center; padding: 20px 0;">
+      <h3 style="color: var(--green); margin-bottom: 10px; font-size: 1.2rem;">You unlocked the $12k Milestone</h3>
+      <p style="color: var(--text-secondary); margin-bottom: 20px; font-size: 0.95rem; line-height: 1.5;">You turned $10,000 into $12,000! You have earned a <strong>$10 real money reward</strong> from us. Please provide your payment details (UPI ID or Bank Account) below. We will process your transfer within 24 hours.</p>
+      
+      <div class="form-group" style="text-align: left;">
+        <label>Payment Details (UPI/Bank Details)</label>
+        <textarea id="milestone-payment-details" rows="3" placeholder="e.g. user@ybl or Bank A/c 1234..." style="width: 100%; border-radius: 8px; padding: 10px; background: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border); font-family: inherit; margin-top: 5px;"></textarea>
+      </div>
+      
+      <button class="btn btn-primary" style="width: 100%; margin-top: 15px; background: linear-gradient(135deg, #f1c40f, #f39c12); color: #000; font-weight: bold;" id="submit-milestone-btn" onclick="submitMilestoneClaim()">Submit for Processing</button>
+    </div>
+  </div>
+</div>
 
 <!-- Toast Container -->
 <div class="toast-container" id="toast-container"></div>

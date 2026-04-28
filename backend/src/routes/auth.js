@@ -57,7 +57,7 @@ router.post('/signup', async (req, res) => {
     res.status(201).json({
       message: 'Account created successfully',
       token,
-      user: { id: user._id, username: user.username, email: user.email, cashBalance: user.cashBalance, portfolio: user.portfolio, createdAt: user.createdAt, referralCode: user.referralCode, referralEarnings: user.referralEarnings, role: user.role },
+      user: { id: user._id, username: user.username, email: user.email, cashBalance: user.cashBalance, portfolio: user.portfolio, createdAt: user.createdAt, referralCode: user.referralCode, referralEarnings: user.referralEarnings, milestoneRewardClaimed: user.milestoneRewardClaimed, role: user.role },
     });
   } catch (err) {
     console.error('Signup Error:', err);
@@ -103,7 +103,7 @@ router.post('/login', async (req, res) => {
     res.json({
       message: 'Login successful',
       token,
-      user: { id: user._id, username: user.username, email: user.email, cashBalance: user.cashBalance, portfolio: user.portfolio, createdAt: user.createdAt, referralCode: user.referralCode, referralEarnings: user.referralEarnings, role: user.role },
+      user: { id: user._id, username: user.username, email: user.email, cashBalance: user.cashBalance, portfolio: user.portfolio, createdAt: user.createdAt, referralCode: user.referralCode, referralEarnings: user.referralEarnings, milestoneRewardClaimed: user.milestoneRewardClaimed, role: user.role },
     });
   } catch (err) {
     console.error('Login Error:', err);

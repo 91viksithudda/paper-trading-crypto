@@ -26,6 +26,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 loadDashboardStats();
             } else if (targetId === 'users') {
                 loadAllUsers();
+            } else if (targetId === 'claims') {
+                loadAllClaims();
             }
         });
     });
@@ -111,7 +113,9 @@ async function loadDashboardStats() {
         }
     } catch (err) {
         console.error("Error loading dashboard stats:", err);
-        // Optionally show toast error
+        if (err.message.includes('401') || err.message.includes('403')) {
+            logout();
+        }
     }
 }
 
@@ -127,6 +131,11 @@ async function loadAllUsers() {
             }
         });
         
+        if (response.status === 401 || response.status === 403) {
+            logout();
+            throw new Error('Session expired. Redirecting...');
+        }
+
         if (!response.ok) throw new Error('Failed to load users');
         
         const users = await response.json();
@@ -165,8 +174,16 @@ async function loadAllUsers() {
         }
     } catch (err) {
         console.error("Error loading users:", err);
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--danger);">Failed to load users.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--danger); font-size: 0.9rem;">
+            ${err.message.includes('expired') ? 'Session expired. Redirecting...' : 'Failed to load users.'}
+        </td></tr>`;
     }
+}
+
+function logout() {
+    localStorage.removeItem('ag_token');
+    localStorage.removeItem('ag_user');
+    window.location.href = 'index.html';
 }
 
 // Global functions for inline handlers
@@ -235,3 +252,77 @@ window.deleteUser = async (id, username) => {
         alert("Failed to delete user.");
     }
 };
+
+// ================== REWARD CLAIMS ==================
+window.loadAllClaims = async () => {
+    const tbody = document.querySelector('#allClaimsTable tbody');
+    if (!tbody) return;
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align: center;"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</td></tr>`;
+
+    try {
+        const response = await fetch(`${API_BASE}/reward/claims`, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('ag_token')}`
+            }
+        });
+        
+        if (response.status === 401 || response.status === 403) {
+            logout();
+            throw new Error('Session expired');
+        }
+
+        if (!response.ok) throw new Error('Failed to load claims');
+        
+        const claims = await response.json();
+        tbody.innerHTML = '';
+        
+        if (claims && claims.length > 0) {
+            claims.forEach(claim => {
+                const tr = document.createElement('tr');
+                const date = new Date(claim.createdAt).toLocaleString();
+                tr.innerHTML = `
+                    <td>${date}</td>
+                    <td><strong style="color:var(--text-primary);">${claim.userId ? claim.userId.username : 'Deleted User'}</strong></td>
+                    <td style="word-break: break-all; font-family: monospace; color: var(--accent-light);">${claim.paymentDetails || 'N/A'}</td>
+                    <td style="color: #f1c40f; font-weight: bold;">$${claim.amount}</td>
+                    <td>
+                        <span class="badge" style="background: ${claim.status === 'paid' ? 'var(--green-glow)' : 'var(--red-glow)'}; color: ${claim.status === 'paid' ? 'var(--green)' : 'var(--red)'}">
+                            ${claim.status.toUpperCase()}
+                        </span>
+                    </td>
+                    <td>
+                        ${claim.status === 'pending' ? `<button class="btn btn-primary btn-sm" style="background:var(--green); border-color:var(--green);" onclick="markClaimPaid('${claim._id}')"><i class="fa-solid fa-check"></i> Mark Paid</button>` : `<span style="font-size:12px;color:var(--text-muted)">Processed</span>`}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } else {
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align: center;">No claims found.</td></tr>`;
+        }
+    } catch (err) {
+        console.error("Error loading claims:", err);
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--danger);">Failed to load claims.</td></tr>`;
+    }
+};
+
+window.markClaimPaid = async (id) => {
+    if (!confirm('Are you sure you want to mark this claim as paid? Make sure you have transferred the real money.')) return;
+    
+    try {
+        const response = await fetch(`${API_BASE}/reward/claims/${id}/pay`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('ag_token')}`
+            }
+        });
+        
+        if (!response.ok) throw new Error('Failed to update claim');
+        
+        loadAllClaims();
+    } catch (err) {
+        console.error("Error updating claim:", err);
+        alert("Failed to mark as paid.");
+    }
+};
+
